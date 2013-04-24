@@ -16,6 +16,7 @@ FILES="\
     html/logo-114.png                       \
     html/logo-144.png                       \
     html/apple-touch-icon-precomposed.png   \
+    html/apple-touch-icon.png               \
     html/humans.txt                         \
     html/robots.txt                         \
     html/roboto.ttf                         "
