@@ -75,7 +75,7 @@ class GardenUI
             $('#raysTraced').text(@renderer.raysTraced)
             $('#raySpeed').text(@renderer.raysPerSecond()|0)
 
-        $('#histogramImage')
+        $('#histogramImage, #help')
             .mousedown (e) =>
                 e.preventDefault()
                 return if @handlingTouch
