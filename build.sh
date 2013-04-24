@@ -36,6 +36,7 @@ fi
             html/src/jquery-1.9.1.min.js \
             html/src/jquery.hotkeys.js \
             html/src/asmjs-feature-test.js \
+            html/src/analytics.js \
             $DEBUG_CODE
         (
             cat \
