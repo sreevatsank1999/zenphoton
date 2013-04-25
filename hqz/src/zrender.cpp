@@ -38,7 +38,7 @@ ZRender::ZRender(const Value &scene)
     // Integer resolution values
     const Value& resolution = mScene["resolution"];
     if (checkTuple(resolution, "resolution", 2)) {
-        mWidth = sampleValue(resolution[0U]);
+        mWidth = sampleValue(resolution[0u]);
         mHeight = sampleValue(resolution[1]);
     }
 
