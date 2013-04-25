@@ -1,5 +1,6 @@
 /*
- * This file is part of the RayChomper experimental raytracer. 
+ * This file is part of HQZ, the batch renderer for Zen Photon Garden.
+ *
  * Copyright (c) 2013 Micah Elizabeth Scott <micah@scanlime.org>
  *
  * Permission is hereby granted, free of charge, to any person
@@ -24,13 +25,35 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
-#include "ofMain.h"
-#include "testApp.h"
-#include "ofAppGlutWindow.h"
+#pragma once
+#include "rapidjson/document.h"
+#include "prng.h"
+#include <sstream>
+#include <vector>
 
-int main()
-{
-    ofAppGlutWindow window;
-    ofSetupOpenGL(&window, 1024,768, OF_WINDOW);
-    ofRunApp(new testApp());
-}
+
+class ZRender {
+public:
+    typedef rapidjson::Value Value;
+
+    ZRender(const Value &scene);
+
+    void render(std::vector<unsigned char> &pixels);
+
+    const char *errorText() const { return mError.str().c_str(); }
+    bool hasError() const { return !mError.str().empty(); }
+    unsigned width() const { return mWidth; }
+    unsigned height() const { return mHeight; }
+
+private:
+    PRNG mRandom;
+    unsigned mWidth, mHeight;
+
+    const Value& mScene;
+    const Value& mViewport;
+
+    std::ostringstream mError;
+
+    bool checkTuple(const Value &v, const char *noun, unsigned expected);
+    double sampleValue(const Value &v);
+};

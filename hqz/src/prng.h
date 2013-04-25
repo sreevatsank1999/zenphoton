@@ -1,0 +1,43 @@
+/*
+ * A tiny, fast, and predictable public domain PRNG.
+ *
+ * A C++ adaptation of:
+ *   http://burtleburtle.net/bob/rand/smallprng.html
+ */
+
+#pragma once
+#include <stdint.h>
+
+class PRNG {
+private:
+    uint32_t rng0, rng1, rng2, rng3;
+
+public:
+    void seed(uint32_t s)
+    {
+        rng0 = 0xf1ea5eed;
+        rng1 = rng2 = rng3 = s;
+        for (unsigned i = 0; i < 20; ++i)
+            uniform32();
+    }
+
+    uint32_t __attribute__((always_inline)) uniform32()
+    {
+        uint32_t rng4 = (rng0 - ((rng1 << 27) | (rng1 >> 5)));
+        rng0 = rng1 ^ ((rng2 << 17) | (rng2 >> 15));
+        rng1 = rng2 + rng3;
+        rng2 = rng3 + rng4;
+        rng3 = rng4 + rng0;
+        return rng3;
+    }
+
+    double __attribute__((always_inline)) uniform()
+    {
+        return uniform32() * 2.3283064365386963e-10;
+    }
+
+    double __attribute__((always_inline)) uniform(double a, double b)
+    {
+        return a + uniform() * (b - a);
+    }
+};
