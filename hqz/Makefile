@@ -21,7 +21,12 @@ hqz: $(HQZ_OBJS)
 %.o: %.cpp $(CDEPS)
 	$(CC) -c -o $@ $< $(CCFLAGS)
 
-.PHONY: clean
+# Simple benchmarking target
+time: hqz
+	time ./hqz example.json example.png
+	open example.png
+
+.PHONY: clean time
 
 clean:
 	rm -f $(BINS) $(HQZ_OBJS)

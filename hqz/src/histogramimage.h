@@ -38,18 +38,44 @@ public:
     void resize(unsigned w, unsigned h);
     void clear();
     void render(std::vector<unsigned char> &rgb, double scale, double exponent);
-    void plot(int r, int g, int b, unsigned x, unsigned y);
+    void plot(uint8_t r, uint8_t g, uint8_t b, unsigned x, unsigned y);
     void line(int r, int g, int b, double x0, double y0, double x1, double y1);
 
     unsigned width() const { return mWidth; }
     unsigned height() const { return mHeight; }
 
 private:
+    // Tiled memory organization, to improve data locality
+    static const unsigned kTileBits = 4;
+    static const unsigned kTileWidth = 1 << kTileBits;
+    static const unsigned kTileMask = kTileWidth - 1;
+    static const unsigned kPixelsPerTile = kTileWidth * kTileWidth;
+    static const unsigned kSamplesPerTile = kPixelsPerTile * 3;
+    static const unsigned kBufferLength = 0x4000;
+
+    unsigned tilesWide() const { return (mWidth + kTileWidth - 1) >> kTileBits; };
+    unsigned tilesHigh() const { return (mHeight + kTileWidth - 1) >> kTileBits; };
+
+    // Actual requested width/height of image
     uint32_t mWidth, mHeight;
-    std::vector<uint64_t> mCounts;
+
+    // Main storage for each tile, organized by (y, x, channel).
+    struct TileSamples {
+        uint64_t samples[kSamplesPerTile];
+    };
+
+    // Intermediate sorting buffer for each tile. Stores a 24-bit color plus an 8-bit pixel number.
+    struct TileBuffer {
+        uint32_t records[kBufferLength];
+    };
+
+    std::vector<TileSamples> mSamples;          // Final counts for each tile
+    std::vector<TileBuffer> mBuffer;            // Sorting buffer for each tile
+    std::vector<uint16_t> mBufferCounts;        // Fill levels for all sorting buffers
 
     void lPlot(int r, int g, int b, double br, unsigned x, unsigned y, bool swap);
     void lineImpl(int r, int g, int b, double x0, double y0, double x1, double y1, bool swap);
+    void flushBuffer(unsigned tileNumber);
 };
 
 
@@ -57,13 +83,20 @@ inline void HistogramImage::resize(unsigned w, unsigned h)
 {
     mWidth = w;
     mHeight = h;
-    mCounts.resize(w * h * 3);
+
+    unsigned numTiles = tilesWide() * tilesHigh();
+
+    mSamples.resize(numTiles);
+    mBuffer.resize(numTiles);
+    mBufferCounts.resize(numTiles);
+
     clear();
 }
 
 inline void HistogramImage::clear()
 {
-    mCounts.assign(mCounts.size(), 0);
+    memset(&mSamples[0], 0, mSamples.size() * sizeof mSamples[0]);
+    memset(&mBufferCounts[0], 0, mBufferCounts.size() * sizeof mBufferCounts[0]);
 }
 
 inline void HistogramImage::render(std::vector<unsigned char> &rgb, double scale, double exponent)
@@ -72,23 +105,83 @@ inline void HistogramImage::render(std::vector<unsigned char> &rgb, double scale
 
     PRNG rng;
     rng.seed(0);
-    rgb.resize(mCounts.size());
 
-    for (unsigned i = 0, e = (unsigned)mCounts.size(); i != e; ++i) {
-        double v = pow(mCounts[i] * scale, exponent) + 0.5 + rng.uniform(0, 0.5);
-        rgb[i] = std::max(0.0, std::min(255.9, v));
+    unsigned rgbIndex = 0;
+    rgb.resize(mWidth * mHeight * 3);
+
+    for (unsigned i = 0, e = (unsigned)mBuffer.size(); i != e; ++i) {
+        flushBuffer(i);
+        mBufferCounts[i] = 0;
+    }
+
+    for (unsigned y = 0; y < mHeight; ++y)
+        for (unsigned x = 0; x < mWidth; ++x)
+            for (unsigned c = 0; c < 3; ++c) {
+
+                unsigned tileX = x >> kTileBits;
+                unsigned tileY = y >> kTileBits;
+                unsigned tileNumber = tileX + tileY * tilesWide();
+                unsigned pixelX = x & kTileMask;
+                unsigned pixelY = y & kTileMask;
+                unsigned sampleNumber = c + 3 * (pixelX + (pixelY << kTileBits));
+                uint64_t sample = mSamples[tileNumber].samples[sampleNumber];
+
+                double v = pow(sample * scale, exponent) + 0.5 + rng.uniform(0, 0.5);
+
+                rgb[rgbIndex++] = std::max(0.0, std::min(255.9, v));
+            }
+}
+
+inline void HistogramImage::flushBuffer(unsigned tileNumber)
+{
+    /*
+     * Write back all buffered records for a single tile. Does not update the
+     * mBufferCounts for this tile; the caller is responsible for zeroing it,
+     * since in plot() we can save a write.
+     */
+
+    unsigned count = mBufferCounts[tileNumber];
+    uint32_t *ptr = mBuffer[tileNumber].records;
+    TileSamples &ts = mSamples[tileNumber];
+
+    while (count--) {
+        uint32_t record = *(ptr++);
+
+        unsigned pixelNumber = record >> 24;
+        unsigned i = pixelNumber * 3;
+
+        unsigned r = (record >> 16) & 0xFF;
+        unsigned g = (record >> 8) & 0xFF;
+        unsigned b = record & 0xFF;
+
+        ts.samples[i++] += r;
+        ts.samples[i++] += g;
+        ts.samples[i  ] += b;
     }
 }
 
-inline void __attribute__((always_inline)) HistogramImage::plot(int r, int g, int b, unsigned x, unsigned y)
+inline void __attribute__((always_inline)) HistogramImage::plot(uint8_t r, uint8_t g, uint8_t b, unsigned x, unsigned y)
 {
     if (x >= mWidth || y >= mHeight)
         return;
 
-    unsigned index = 3 * (x + y * mWidth);
-    mCounts[index++] += r;
-    mCounts[index++] += g;
-    mCounts[index++] += b;
+    unsigned tileX = x >> kTileBits;
+    unsigned tileY = y >> kTileBits;
+    unsigned tileNumber = tileX + tileY * tilesWide();
+
+    unsigned pixelX = x & kTileMask;
+    unsigned pixelY = y & kTileMask;
+    unsigned pixelNumber = pixelX + (pixelY << kTileBits);
+
+    unsigned count = mBufferCounts[tileNumber];
+    if (count == kBufferLength) {
+        flushBuffer(tileNumber);
+        count = 0;
+    }
+
+    // These writes tend to be sequential. Good for cache performance!
+    mBuffer[tileNumber].records[count] = unsigned(b) | (unsigned(g) << 8) | (unsigned(r) << 16) | (pixelNumber << 24);
+    mBufferCounts[tileNumber] = count + 1;
 }
 
 inline void __attribute__((always_inline)) HistogramImage::lPlot(int r, int g, int b, double br, unsigned x, unsigned y, bool swap)
