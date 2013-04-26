@@ -24,15 +24,19 @@ The JSON input file is an object with a number of mandatory members:
 	* Sets the output resolution, in pixels.
 * **"viewport"**: [ *left*, *top*, *width*, *height* ]
 	* Defines the scene coordinate system relative to the viewable area.
-* **"lights"**: [ *light1*, *light2*, … ]
+* **"lights"**: [ *light 0*, *light 1*, … ]
 	* A list of all lights in the scene. (Details below)
-* **"objects"**: [ *object1*, *object2*, … ]
+* **"objects"**: [ *object 0*, *object 1*, … ]
 	* A list of all objects in the scene. (Details below)
+* **"materials"**: [ *material 0*, *material 1*, … ]
+	* A list of all materials in the scene. (Details below)
 
 Optional members:
 
 * **"seed"**: *integer*
 	* Defines the 32-bit seed value for our pseudorandom number generator. Changing this value will change the specific pattern of noise in the rendering. By default this is arbitrarily set to zero.
+* **"exposure"**: *float*
+    * Sets the exposure (brightness) of the rendering. Units are an arbitrary logarithmic scale which matches [zenphoton.com](http://zenphoton.com)'s exposure slider over the range [0,1]. If this is null or missing, we use an automatic exposure algorithm.
 
 ### Sampled Values
 
@@ -49,7 +53,7 @@ Numeric values in your scene can be sampled stochastically every time they are e
 
 ### Light Format
 
-Lights are each described as an array of sampled values:
+A light is a thing that can emit rays. Lights are each described as an array of sampled values:
 
 * [0] **Light power**. The relative power of this light compared to other lights controls how often it casts rays relative to those other lights. Total power of all lights in a scene is factored into exposure calculations. Light power is linear.
 * [1] **Cartesian X coordinate**. The base position of the light is an (x,y) coordinate. In viewport units.
@@ -58,3 +62,34 @@ Lights are each described as an array of sampled values:
 * [4] **Polar distance**. In viewport units.
 * [5] **Wavelength**. In nanometers. Use a constant for monochromatic light, or use a blackbody random variable for full-spectrum light.
 
+### Object Format
+
+Scene objects are things that interact with rays once they've been emitted. Various kinds of objects are supported:
+
+* [ *material*, *x0*, *y0*, *dx*, *dy* ]
+	* A line segment, extending from (x0, y0) to (x0 + dx, y0 + dy). Coordinates are all sampled.
+* [ *material*, *x0*, *y0*, *dx0*, *dy0*, *dx1*, *dy1*, … ]
+	* A path made of connected line segments. All deltas are relative to (x0, y0).
+* Etc.
+	* Other values are reserved for future use.
+
+### Material Format
+
+To reduce redundancy in the scene format, materials are referenced elsewhere by their zero-based array index in a global materials array. In `hqz`, a *material* specifies what happens to a ray after it comes into contact with an object.
+
+A material is an array of weighted probabilistic outcomes. For example:
+
+	[ [0.5, "d"], [0.2, "t"], [0.1, "r"] ]
+	
+This gives any incident rays a 50% chance of bouncing in a random direction (diffuse), a 20% chance of passing straight through (transmissive), a 10% chance of reflecting, and the remaining 20% chance is that the ray will be absorbed by the material. The empty array is a valid material, indicating that rays are always absorbed.
+
+Various outcomes are supported, each identified by different kinds of JSON objects appended to the outcome's weight:
+
+* [ *probability*, "d" ]
+	* Perfectly diffuse reflection. Any incident rays bounce out at a random angle.
+* [ *probability*, "t" ]
+	* Ray is transmitted through the material without change.
+* [ *probability*, "r" ]
+	* Ray is reflected off of the object.
+* Etc.
+	* Other values are reserved for future use.
