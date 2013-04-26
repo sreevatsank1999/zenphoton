@@ -57,7 +57,7 @@ struct Ray
             / (normal.x * normal.x + normal.y * normal.y);
         direction.x -= t * normal.x;
         direction.y -= t * normal.y;
-        slope = origin.y / origin.x;
+        slope = direction.y / direction.x;
     }
 
     Vec2 pointAtDistance(double distance) const
