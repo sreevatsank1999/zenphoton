@@ -74,7 +74,7 @@ inline void HistogramImage::render(std::vector<unsigned char> &rgb, double scale
     rng.seed(0);
     rgb.resize(mCounts.size());
 
-    for (unsigned i = 0, e = mCounts.size(); i != e; ++i) {
+    for (unsigned i = 0, e = (unsigned)mCounts.size(); i != e; ++i) {
         double v = pow(mCounts[i] * scale, exponent) + 0.5 + rng.uniform(0, 0.5);
         rgb[i] = std::max(0.0, std::min(255.9, v));
     }

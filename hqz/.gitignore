@@ -1,4 +1,7 @@
 *.o
 *.png
+*.dSYM
+.DS_Store
 hqz
+xcuserdata
 
