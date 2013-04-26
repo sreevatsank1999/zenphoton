@@ -37,10 +37,8 @@ ZRender::ZRender(const Value &scene)
 
     // Integer resolution values
     const Value& resolution = mScene["resolution"];
-    if (checkTuple(resolution, "resolution", 2)) {
-        mWidth = sampleValue(resolution[0u]);
-        mHeight = sampleValue(resolution[1]);
-    }
+    if (checkTuple(resolution, "resolution", 2))
+        image.resize(sampleValue(resolution[0u]), sampleValue(resolution[1]));
 
     // Cached tuples
     checkTuple(mViewport, "viewport", 4);
@@ -48,17 +46,14 @@ ZRender::ZRender(const Value &scene)
 
 void ZRender::render(std::vector<unsigned char> &pixels)
 {
-    pixels.resize(mWidth * mHeight * 3);
+    for (unsigned i = 0; i < 200000; i++)
+        image.line(127, 200, 127,
+            mRandom.uniform(0, width()),
+            mRandom.uniform(0, height()),
+            mRandom.uniform(0, width()),
+            mRandom.uniform(0, height()));
 
-    for (unsigned y = 0; y < mHeight; y++) {
-        for (unsigned x = 0; x < mWidth; x++) {
-            unsigned i = (y * mWidth + x) * 3;
-
-            pixels[i + 0] = x;
-            pixels[i + 1] = y;
-            pixels[i + 2] = 0x80;
-        }
-    }
+    image.render(pixels, 0.0005, 2.0);
 }
 
 bool ZRender::checkTuple(const Value &v, const char *noun, unsigned expected)

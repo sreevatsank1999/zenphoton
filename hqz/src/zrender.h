@@ -28,6 +28,7 @@
 #pragma once
 #include "rapidjson/document.h"
 #include "prng.h"
+#include "histogramimage.h"
 #include <sstream>
 #include <vector>
 
@@ -42,12 +43,12 @@ public:
 
     const char *errorText() const { return mError.str().c_str(); }
     bool hasError() const { return !mError.str().empty(); }
-    unsigned width() const { return mWidth; }
-    unsigned height() const { return mHeight; }
+    unsigned width() const { return image.width(); }
+    unsigned height() const { return image.height(); }
 
 private:
     PRNG mRandom;
-    unsigned mWidth, mHeight;
+    HistogramImage image;
 
     const Value& mScene;
     const Value& mViewport;
