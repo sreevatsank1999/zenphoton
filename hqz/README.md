@@ -58,9 +58,10 @@ A light is a thing that can emit rays. Lights are each described as an array of 
 * [0] **Light power**. The relative power of this light compared to other lights controls how often it casts rays relative to those other lights. Total power of all lights in a scene is factored into exposure calculations. Light power is linear.
 * [1] **Cartesian X coordinate**. The base position of the light is an (x,y) coordinate. In viewport units.
 * [2] **Cartesian Y coordinate**.
-* [3] **Polar angle**. An additional polar coordinate can be added to the cartesian coordinate, to create round and arc shaped lights. In radians.
+* [3] **Polar angle**. An additional polar coordinate can be added to the cartesian coordinate, to create round and arc shaped lights. In degrees.
 * [4] **Polar distance**. In viewport units.
-* [5] **Wavelength**. In nanometers. Use a constant for monochromatic light, or use a blackbody random variable for full-spectrum light.
+* [5] **Ray angle**. In degrees.
+* [6] **Wavelength**. In nanometers. Use a constant for monochromatic light, or use a blackbody random variable for full-spectrum light. Zero is a special pseudo-wavelength for monochromatic white light.
 
 ### Object Format
 

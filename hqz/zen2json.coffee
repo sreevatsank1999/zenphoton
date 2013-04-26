@@ -50,9 +50,8 @@ module.exports =
         exposure = blob.readUInt8 9
         numSegments = blob.readUInt16BE 10
 
-        # One light, assume an sRGB 6500K white point
-        white = [ 6500, 'K' ]
-        light = [ 1.0, lightX, lightY, 0.0, 0.0, white ]
+        # One light, monochromatic white
+        light = [ 1, lightX, lightY, 0, 0, [0, 360], 0 ]
 
         # Fixed-size portions of the scene
         scene =
