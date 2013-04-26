@@ -86,7 +86,10 @@ void ZRender::render(std::vector<unsigned char> &pixels)
     for (unsigned i = numRays; i; --i)
         traceRay();
 
-    double scale = exp(1.0 + 10.0 * exposure) / numRays;
+    // Exposure calculation as a backward-compatible generalization of zenphoton.com.
+    double areaScale = sqrt(double(image.width()) * image.height() / (1024 * 576));
+    double scale = exp(1.0 + 10.0 * exposure) * areaScale / numRays;
+
     image.render(pixels, scale, 1.0);
 }
 

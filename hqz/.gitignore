@@ -1,7 +1,6 @@
 *.o
 *.png
 *.dSYM
-.DS_Store
 hqz
 hqz.build
 xcuserdata
