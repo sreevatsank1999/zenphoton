@@ -5,7 +5,7 @@ A batch renderer in the style of Zen photon garden.
 
 High Quality Zen (`hqz`) is a command line tool which converts a JSON scene description into a rendered PNG image. Rays are traced in 2D, just like on [zenphoton.com](http://zenphoton.com). But freed from the constraints of interactivity and HTML5, `hqz` can focus on creating high quality renderings for print and animation.
 
-Artwork from [zenphoton.com](http://zenphoton.com) may be converted to JSON using an included Python script. This can be used to render print-quality versions of existing images, or as a starting point for experimenting with the other capabilities of `hqz`.
+Artwork from [zenphoton.com](http://zenphoton.com) may be converted to JSON using an included zen2json script. This can be used to render print-quality versions of existing images, or as a starting point for experimenting with the other capabilities of `hqz`.
 
 Planned features:
 
@@ -14,6 +14,19 @@ Planned features:
 * Stopping condition based on a quality metric.
 * Tools for dispatching video frames to an AWS compute cluster.
 * Blender plugin for authoring animations.
+
+Build
+-----
+
+Batteries included: `hqz` has no external dependencies aside from the C++ standard library.
+
+On Mac OS X, an XCode project file is included. For other platforms, there's a generic Makefile:
+
+	$ make
+	cc -c -o src/zrender.o src/zrender.cpp -Isrc -Wall -Werror -g -O3 -ffast-math -fno-exceptions
+	…
+	$ ./hqz example.json example.png
+	$ open example.png
 
 Scene Format
 ------------
