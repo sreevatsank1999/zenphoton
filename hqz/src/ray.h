@@ -42,12 +42,6 @@ struct Ray
     double slope;
     double wavelength;
 
-    void setOrigin(double x, double y)
-    {
-        origin.x = x;
-        origin.y = y;
-    }
-
     void setAngle(double r)
     {
         direction.x = cos(r);
@@ -57,13 +51,22 @@ struct Ray
 
     void reflect(Vec2 normal)
     {
-        double t = 2.0 * (normal.x * direction.x + normal.y * direction.y);
+        // Does *not* require 'normal' to already be normalized.
+
+        double t = 2.0 * (normal.x * direction.x + normal.y * direction.y)
+            / (normal.x * normal.x + normal.y * normal.y);
         direction.x -= t * normal.x;
         direction.y -= t * normal.y;
         slope = origin.y / origin.x;
     }
 
-    bool intersectSegment(Vec2 s1, Vec2 sD, double &distance)
+    Vec2 pointAtDistance(double distance) const
+    {
+        Vec2 result = { origin.x + distance * direction.x, origin.y + distance * direction.y };
+        return result;
+    }
+
+    bool intersectSegment(Vec2 s1, Vec2 sD, double &distance) const
     {
         // Ray to Segment Intersection.
         // On intersection, returns 'true' and sets 'distance'.

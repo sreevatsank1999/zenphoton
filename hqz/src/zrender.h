@@ -83,7 +83,8 @@ private:
 
     // Data model
     bool checkTuple(const Value &v, const char *noun, unsigned expected);
-    bool checkMaterial(const Value &v);
+    bool checkMaterialID(const Value &v);
+    bool checkMaterialValue(int index);
     double sampleValue(const Value &v);
 
     // Raytracer entry point
@@ -96,9 +97,10 @@ private:
 
     // Material sampling
     bool rayMaterial(IntersectionData &d);
+    bool rayMaterialOutcome(IntersectionData &d, const Value &outcome);
 
     // Object sampling
-    bool rayIntersect(IntersectionData &d);
+    bool rayIntersect(IntersectionData &d, const ViewportSample &v);
     bool rayIntersectObject(IntersectionData &d, const Value &object);
-    void rayIntersectBounds(IntersectionData &d);
+    void rayIntersectBounds(IntersectionData &d, const ViewportSample &v);
 };

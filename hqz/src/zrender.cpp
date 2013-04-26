@@ -48,7 +48,6 @@ ZRender::ZRender(const Value &scene)
 
     // Other cached tuples
     checkTuple(mViewport, "viewport", 4);
-    checkTuple(mMaterials, "materials", 0);
 
     // Add up the total light power in the scene, and check all lights.
     if (checkTuple(mLights, "viewport", 1)) {
@@ -67,18 +66,28 @@ ZRender::ZRender(const Value &scene)
         for (unsigned i = 0; i < mObjects.Size(); ++i) {
             const Value &object = mObjects[i];
             if (checkTuple(object, "object", 5)) {
-                checkMaterial(object[0u]);
+                checkMaterialID(object[0u]);
             }
         }
+    }
+
+    // Check all materials
+    if (checkTuple(mMaterials, "materials", 0)) {
+        for (unsigned i = 0; i < mMaterials.Size(); ++i)
+            checkMaterialValue(i);
     }
 }
 
 void ZRender::render(std::vector<unsigned char> &pixels)
 {
-    for (unsigned i = 0, e = sampleValue(mScene["rays"]); i != e; ++i)
+    unsigned numRays = sampleValue(mScene["rays"]);
+    double exposure = sampleValue(mScene["exposure"]);
+
+    for (unsigned i = numRays; i; --i)
         traceRay();
 
-    image.render(pixels, 0.0005, 2.0);
+    double scale = exp(1.0 + 10.0 * exposure) / numRays;
+    image.render(pixels, scale, 1.0);
 }
 
 bool ZRender::checkTuple(const Value &v, const char *noun, unsigned expected)
@@ -97,7 +106,7 @@ bool ZRender::checkTuple(const Value &v, const char *noun, unsigned expected)
     return true;
 }
 
-bool ZRender::checkMaterial(const Value &v)
+bool ZRender::checkMaterialID(const Value &v)
 {
     // Check for a valid material ID.
 
@@ -112,6 +121,28 @@ bool ZRender::checkMaterial(const Value &v)
     }
 
     return true;
+}
+
+bool ZRender::checkMaterialValue(int index)
+{
+    const Value &v = mMaterials[index];
+
+    if (!v.IsArray()) {
+        mError << "Material #" << index << " is not an array\n";
+        return false;
+    }
+
+    bool result = true;
+    for (unsigned i = 0, e = v.Size(); i != e; ++i) {
+        const Value& outcome = v[i];
+
+        if (!outcome.IsArray() || outcome.Size() < 1 || !outcome[0u].IsNumber()) {
+            mError << "Material #" << index << " outcome #" << i << "is not an array starting with a number\n";
+            result = false;
+        }
+    }
+
+    return result;
 }
 
 double ZRender::sampleValue(const Value &v)
@@ -163,11 +194,13 @@ const ZRender::Value& ZRender::chooseLight()
 void ZRender::traceRay()
 {
     IntersectionData d;
-    ViewportSample v;
+    d.object = 0;
+
     double width = image.width();
     double height = image.height();
 
     // Sample the viewport once per ray. (e.g. for camera motion blur)
+    ViewportSample v;
     initViewport(v);
 
     // Initialize the ray by sampling a light
@@ -177,10 +210,10 @@ void ZRender::traceRay()
     for (unsigned bounces = 1000; bounces; --bounces) {
 
         // Intersect with an object or the edge of the viewport
-        bool hit = rayIntersect(d);
+        bool hit = rayIntersect(d, v);
 
         // Draw a line from d.ray.origin to d.point
-        image.line(127, 127, 127,
+        image.line(128, 128, 128,
             v.xScale(d.ray.origin.x, width),
             v.yScale(d.ray.origin.y, height),
             v.xScale(d.point.x, width),
@@ -207,8 +240,9 @@ void ZRender::initRay(Ray &r, const Value &light)
     double rayAngle = sampleValue(light[5]) * (M_PI / 180.0);
     double wavelength = sampleValue(light[6]);
 
-    r.setOrigin( cartesianX + cos(polarAngle) * polarDistance,
-                 cartesianY + sin(polarAngle) * polarDistance );
+    r.origin.x = cartesianX + cos(polarAngle) * polarDistance;
+    r.origin.y = cartesianY + sin(polarAngle) * polarDistance;
+
     r.setAngle(rayAngle);
     r.wavelength = wavelength;
 }
@@ -223,15 +257,7 @@ void ZRender::initViewport(ViewportSample &v)
     v.size.y = sampleValue(mViewport[3]);
 }
 
-bool ZRender::rayMaterial(IntersectionData &d)
-{
-    // Sample the material indicated by the intersection 'd' and update the ray.
-    // Returns 'true' if the ray continues propagating, or 'false' if it's abosrbed.
-
-    return false;
-}
-
-bool ZRender::rayIntersect(IntersectionData &d)
+bool ZRender::rayIntersect(IntersectionData &d, const ViewportSample &v)
 {
     /*
      * Sample all objects in the scene that d.ray might hit. If we hit an object,
@@ -247,15 +273,17 @@ bool ZRender::rayIntersect(IntersectionData &d)
     closest.distance = DBL_MAX;
 
     for (unsigned i = 0, e = mObjects.Size(); i != e; ++i) {
-        if (rayIntersectObject(temp, mObjects[i])) {
-            if (temp.distance < closest.distance)
-                closest = temp;
+        const Value &object = mObjects[i];
+
+        if (d.object != &object && rayIntersectObject(temp, object) && temp.distance < closest.distance) {
+            closest = temp;
+            closest.object = &object;
         }
     }
 
     if (closest.distance == DBL_MAX) {
         // Nothing. Intersect with the viewport bounds.
-        rayIntersectBounds(d);
+        rayIntersectBounds(d, v);
         return false;
     }
 
@@ -269,19 +297,109 @@ bool ZRender::rayIntersectObject(IntersectionData &d, const Value &object)
      * Does this ray intersect a specific object? This samples the object once,
      * filling in the required IntersectionData on success. If this ray and object
      * don't intersect at all, returns false.
+     *
+     * Does not write to d.object; it is assumed that the caller does this.
      */
 
-     return false;
+    if (object.Size() == 5) {
+        // Line segment
+
+        Vec2 origin = { sampleValue(object[1]), sampleValue(object[2]) };
+        Vec2 delta = { sampleValue(object[3]), sampleValue(object[4]) };
+
+        if (d.ray.intersectSegment(origin, delta, d.distance)) {
+            d.point = d.ray.pointAtDistance(d.distance);
+            d.normal.x = -delta.y;
+            d.normal.y = delta.x;
+            return true;
+        }
+    }
+
+    return false;
 }
 
-void ZRender::rayIntersectBounds(IntersectionData &d)
+void ZRender::rayIntersectBounds(IntersectionData &d, const ViewportSample &v)
 {
     /*
-     * This ray is never going to hit an object. Update d.point with the point where
-     * this ray leaves the viewport bounds. If the ray is outside the viewport and it will
-     * never come back, this sets d.point = d.ray.origin.
+     * This ray is never going to hit an object. Update d.point with the furthest away
+     * viewport intersection, if any. If this ray never intersects the viewport, d.point
+     * will equal d.ray.origin.
      */
 
-    d.point.x = 50;
-    d.point.y = 50;
+    // Viewport bounds
+    Vec2 topLeft = v.origin;
+    Vec2 topRight = { v.origin.x + v.size.x, v.origin.y };
+    Vec2 bottomLeft = { v.origin.x, v.origin.y + v.size.y };
+    Vec2 horizontal = { v.size.x, 0 };
+    Vec2 vertical = { 0, v.size.y };
+
+    double dist, furthest = 0;
+    if (d.ray.intersectSegment(topLeft, horizontal, dist)) furthest = std::max(furthest, dist);
+    if (d.ray.intersectSegment(bottomLeft, horizontal, dist)) furthest = std::max(furthest, dist);
+    if (d.ray.intersectSegment(topLeft, vertical, dist)) furthest = std::max(furthest, dist);
+    if (d.ray.intersectSegment(topRight, vertical, dist)) furthest = std::max(furthest, dist);
+
+    d.point = d.ray.pointAtDistance(furthest);
+}
+
+bool ZRender::rayMaterial(IntersectionData &d)
+{
+    /*
+     * Sample the material indicated by the intersection 'd' and update the ray.
+     * Returns 'true' if the ray continues propagating, or 'false' if it's abosrbed.
+     */
+
+    // Lookup in our material database
+    const Value &object = *d.object;
+    unsigned id = object[0u].GetUint();
+    const Value &material = mMaterials[id];
+
+    double r = mRandom.uniform();
+    double sum = 0;
+
+    // Loop over all material outcomes, pick one according to our random variable.
+    for (unsigned i = 0, e = material.Size(); i != e; ++i) {
+        const Value& outcome = material[i];
+        sum += outcome[0u].GetDouble();
+        if (r <= sum)
+            return rayMaterialOutcome(d, outcome);
+    }
+
+    // Absorbed
+    return false;
+}
+
+bool ZRender::rayMaterialOutcome(IntersectionData &d, const Value &outcome)
+{
+    // Check for 2-tuple outcomes
+    if (outcome.IsArray() && outcome.Size() == 2) {
+
+        // Look for 2-tuples with a character parameter
+        const Value &param = outcome[1];
+        if (param.IsString() && param.GetStringLength() == 1) {
+            switch (param.GetString()[0]) {
+
+                // Perfectly diffuse, emit the ray with a random angle.
+                case 'd':
+                    d.ray.origin = d.point;
+                    d.ray.setAngle(mRandom.uniform(0, M_PI * 2.0));
+                    return true;
+
+                // Perfectly transparent, emit the ray with no change in angle.
+                case 't':
+                    d.ray.origin = d.point;
+                    return true;
+
+                // Reflected back according to the object's surface normal
+                case 'r':
+                    d.ray.origin = d.point;
+                    d.ray.reflect(d.normal);
+                    return true;
+
+            }
+        }
+    }
+
+    // Unknown outcome
+    return false;
 }
