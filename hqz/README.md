@@ -50,6 +50,8 @@ Optional members:
 	* Defines the 32-bit seed value for our pseudorandom number generator. Changing this value will change the specific pattern of noise in the rendering. By default this is arbitrarily set to zero.
 * **"exposure"**: *float*
     * Sets the exposure (brightness) of the rendering. Units are an arbitrary logarithmic scale which matches [zenphoton.com](http://zenphoton.com)'s exposure slider over the range [0,1]. If this is null or missing, we use an automatic exposure algorithm.
+* **"rays"**: *integer*
+    * Cast a fixed number of rays. If this is null or missing, we use an automatic quality metric.
 
 ### Sampled Values
 

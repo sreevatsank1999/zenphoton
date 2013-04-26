@@ -29,6 +29,7 @@
 #include "rapidjson/document.h"
 #include "prng.h"
 #include "histogramimage.h"
+#include "ray.h"
 #include <sstream>
 #include <vector>
 
@@ -52,9 +53,52 @@ private:
 
     const Value& mScene;
     const Value& mViewport;
+    const Value& mLights;
+    const Value& mObjects;
+    const Value& mMaterials;
 
+    double mLightPower;
     std::ostringstream mError;
 
+    struct IntersectionData {
+        Ray ray;
+        Vec2 point;
+        Vec2 normal;
+        double distance;
+        const Value *object;
+    };
+
+    struct ViewportSample {
+        Vec2 origin;
+        Vec2 size;
+
+        double xScale(double x, double width) {
+            return (x - origin.x) * width / size.x;
+        }
+
+        double yScale(double y, double height) {
+            return (y - origin.y) * height / size.y;
+        }            
+    };
+
+    // Data model
     bool checkTuple(const Value &v, const char *noun, unsigned expected);
+    bool checkMaterial(const Value &v);
     double sampleValue(const Value &v);
+
+    // Raytracer entry point
+    void traceRay();
+
+    // Light sampling
+    const Value &chooseLight();
+    void initRay(Ray &r, const Value &light);
+    void initViewport(ViewportSample &v);
+
+    // Material sampling
+    bool rayMaterial(IntersectionData &d);
+
+    // Object sampling
+    bool rayIntersect(IntersectionData &d);
+    bool rayIntersectObject(IntersectionData &d, const Value &object);
+    void rayIntersectBounds(IntersectionData &d);
 };
