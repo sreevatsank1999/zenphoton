@@ -38,11 +38,25 @@ public:
     void resize(unsigned w, unsigned h);
     void clear();
     void render(std::vector<unsigned char> &rgb, double scale, double exponent);
-    void plot(uint8_t r, uint8_t g, uint8_t b, unsigned x, unsigned y);
-    void line(int r, int g, int b, double x0, double y0, double x1, double y1);
+    void plot(unsigned wl, unsigned intensity, unsigned x, unsigned y);
+    void line(unsigned wl, double x0, double y0, double x1, double y1);
 
     unsigned width() const { return mWidth; }
     unsigned height() const { return mHeight; }
+
+    // Pack a floating point light wavelength into a 16-bit integer.
+    static unsigned packWavelength(double nm)
+    {
+        // Special case for monochromatic white
+        if (nm == 0)
+            return kWavelengthWhite;
+
+        // Invisible?
+        if (nm < kFirstWavelength || nm > kLastWavelength)
+            return kWavelengthBlack;
+
+        return (nm - kFirstWavelength) * double(1 << kWavelengthFixedBits);
+    }
 
 private:
     // Tiled memory organization, to improve data locality
@@ -53,6 +67,13 @@ private:
     static const unsigned kSamplesPerTile = kPixelsPerTile * 3;
     static const unsigned kBufferLength = 0x4000;
 
+    // Integer representation of wavelengths
+    static const double kFirstWavelength = 360.0;
+    static const double kLastWavelength = 830.0;
+    static const unsigned kWavelengthFixedBits = 6;
+    static const unsigned kWavelengthBlack = 0xFFFF;
+    static const unsigned kWavelengthWhite = 0xFFFE;
+
     unsigned tilesWide() const { return (mWidth + kTileWidth - 1) >> kTileBits; };
     unsigned tilesHigh() const { return (mHeight + kTileWidth - 1) >> kTileBits; };
 
@@ -61,10 +82,11 @@ private:
 
     // Main storage for each tile, organized by (y, x, channel).
     struct TileSamples {
-        uint64_t samples[kSamplesPerTile];
+        int64_t samples[kSamplesPerTile];
     };
 
-    // Intermediate sorting buffer for each tile. Stores a 24-bit color plus an 8-bit pixel number.
+    // Intermediate sorting buffer for each tile.
+    // Stores a 16-bit color, 8-bit intensity, and 8-bit pixel number.
     struct TileBuffer {
         uint32_t records[kBufferLength];
     };
@@ -73,8 +95,8 @@ private:
     std::vector<TileBuffer> mBuffer;            // Sorting buffer for each tile
     std::vector<uint16_t> mBufferCounts;        // Fill levels for all sorting buffers
 
-    void lPlot(int r, int g, int b, double br, unsigned x, unsigned y, bool swap);
-    void lineImpl(int r, int g, int b, double x0, double y0, double x1, double y1, bool swap);
+    void lPlot(unsigned wl, unsigned intensity, unsigned x, unsigned y, bool swap);
+    void lineImpl(unsigned wl, double x0, double y0, double x1, double y1, bool swap);
     void flushBuffer(unsigned tileNumber);
 };
 
@@ -124,7 +146,7 @@ inline void HistogramImage::render(std::vector<unsigned char> &rgb, double scale
                 unsigned pixelX = x & kTileMask;
                 unsigned pixelY = y & kTileMask;
                 unsigned sampleNumber = c + 3 * (pixelX + (pixelY << kTileBits));
-                uint64_t sample = mSamples[tileNumber].samples[sampleNumber];
+                int64_t sample = mSamples[tileNumber].samples[sampleNumber];
 
                 double v = pow(sample * scale, exponent) + 0.5 + rng.uniform(0, 0.5);
 
@@ -150,9 +172,15 @@ inline void HistogramImage::flushBuffer(unsigned tileNumber)
         unsigned pixelNumber = record >> 24;
         unsigned i = pixelNumber * 3;
 
-        unsigned r = (record >> 16) & 0xFF;
-        unsigned g = (record >> 8) & 0xFF;
-        unsigned b = record & 0xFF;
+        // Encoded wavelength and 8-bit intensity
+        unsigned wl = record & 0xFFFF;
+        unsigned intensity = (record >> 16) & 0xFF;
+
+        // XXX: Wavelength to sRGB
+        (void)wl;
+        int r = intensity;
+        int g = intensity;
+        int b = intensity;
 
         ts.samples[i++] += r;
         ts.samples[i++] += g;
@@ -160,7 +188,7 @@ inline void HistogramImage::flushBuffer(unsigned tileNumber)
     }
 }
 
-inline void __attribute__((always_inline)) HistogramImage::plot(uint8_t r, uint8_t g, uint8_t b, unsigned x, unsigned y)
+inline void __attribute__((always_inline)) HistogramImage::plot(unsigned wl, unsigned intensity, unsigned x, unsigned y)
 {
     if (x >= mWidth || y >= mHeight)
         return;
@@ -180,21 +208,21 @@ inline void __attribute__((always_inline)) HistogramImage::plot(uint8_t r, uint8
     }
 
     // These writes tend to be sequential. Good for cache performance!
-    mBuffer[tileNumber].records[count] = unsigned(b) | (unsigned(g) << 8) | (unsigned(r) << 16) | (pixelNumber << 24);
+    mBuffer[tileNumber].records[count] = wl | (intensity << 16) | (pixelNumber << 24);
     mBufferCounts[tileNumber] = count + 1;
 }
 
-inline void __attribute__((always_inline)) HistogramImage::lPlot(int r, int g, int b, double br, unsigned x, unsigned y, bool swap)
+inline void __attribute__((always_inline)) HistogramImage::lPlot(unsigned wl, unsigned intensity, unsigned x, unsigned y, bool swap)
 {
     // Plotter function used by line(). Capable of swapping X and Y axes based on (known at compile-time) 'swap' param.
 
     if (swap)
-        plot(r * br, g * br, b * br, y, x);
+        plot(wl, intensity, y, x);
     else
-        plot(r * br, g * br, b * br, x, y);
+        plot(wl, intensity, x, y);
 }
 
-inline void __attribute((always_inline)) HistogramImage::lineImpl(int r, int g, int b, double x0, double y0, double x1, double y1, bool swap)
+inline void __attribute((always_inline)) HistogramImage::lineImpl(unsigned wl, double x0, double y0, double x1, double y1, bool swap)
 {
     /*
      * Internal axis-swappable implementation of line().
@@ -210,7 +238,7 @@ inline void __attribute((always_inline)) HistogramImage::lineImpl(int r, int g, 
     double dx = x1 - x0;
     double dy = y1 - y0;
     double gradient = dy / dx;
-    double br = sqrt(dx*dx + dy*dy) / dx;
+    double br = 128.0 * sqrt(dx*dx + dy*dy) / dx;
 
     // First endpoint
     double x05 = x0 + 0.5;
@@ -220,8 +248,8 @@ inline void __attribute((always_inline)) HistogramImage::lineImpl(int r, int g, 
     double xgap = br * (1.0 - x05 + xend);
     int ypxl1 = yend;
     double t = yend - int(yend);
-    lPlot(r, g, b, xgap * (1.0 - t), xpxl1, ypxl1, swap);
-    lPlot(r, g, b, xgap * t, xpxl1, ypxl1 + 1, swap);
+    lPlot(wl, xgap * (1.0 - t), xpxl1, ypxl1, swap);
+    lPlot(wl, xgap * t, xpxl1, ypxl1 + 1, swap);
     double intery = yend + gradient;
 
     // Second endpoint
@@ -232,20 +260,20 @@ inline void __attribute((always_inline)) HistogramImage::lineImpl(int r, int g, 
     xgap = br * (x15 - t);
     int ypxl2 = yend;
     t = yend - int(yend);
-    lPlot(r, g, b, xgap * (1.0 - t), xpxl2, ypxl2, swap);
-    lPlot(r, g, b, xgap * t, xpxl2, ypxl2 + 1, swap);
+    lPlot(wl, xgap * (1.0 - t), xpxl2, ypxl2, swap);
+    lPlot(wl, xgap * t, xpxl2, ypxl2 + 1, swap);
 
     // Inner loop
     while (++xpxl1 < xpxl2) {
         unsigned iy = intery;
         double fy = intery - iy;
-        lPlot(r, g, b, br * (1.0 - fy), xpxl1, iy, swap);
-        lPlot(r, g, b, br * fy, xpxl1, iy + 1, swap);
+        lPlot(wl, br * (1.0 - fy), xpxl1, iy, swap);
+        lPlot(wl, br * fy, xpxl1, iy + 1, swap);
         intery += gradient;
     }
 }
 
-inline void HistogramImage::line(int r, int g, int b, double x0, double y0, double x1, double y1)
+inline void HistogramImage::line(unsigned wl, double x0, double y0, double x1, double y1)
 {
     /*
      * Modified version of Xiaolin Wu's antialiased line algorithm:
@@ -263,7 +291,7 @@ inline void HistogramImage::line(int r, int g, int b, double x0, double y0, doub
     if (dy < 0.0) dy = -dy;
 
     if (dy > dx)
-        lineImpl(r, g, b, y0, x0, y1, x1, true);
+        lineImpl(wl, y0, x0, y1, x1, true);
     else   
-        lineImpl(r, g, b, x0, y0, x1, y1, false);
+        lineImpl(wl, x0, y0, x1, y1, false);
 }
