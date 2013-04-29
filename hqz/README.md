@@ -39,7 +39,7 @@ The JSON input file is an object with a number of mandatory members:
 * **"exposure"**: *float*
     * Sets the exposure (brightness) of the rendering. Units are an arbitrary logarithmic scale which matches [zenphoton.com](http://zenphoton.com)'s exposure slider over the range [0,1].
 * **"rays"**: *integer*
-    * Number of rays to cast. Note that some rays may be outside the visible range if you're using a blackbody random varaible for your light wavelength, so this number may need to be higher than otherwise.
+    * Number of rays to cast.
 
 Optional members:
 
