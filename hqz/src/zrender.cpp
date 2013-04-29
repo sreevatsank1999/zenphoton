@@ -38,12 +38,13 @@ ZRender::ZRender(const Value &scene)
     mLightPower(0.0)
 {
     // Seed the PRNG. (Zero by default)
-    mRandom.seed(sampleValue(mScene["seed"]));
+    mRandom.seed(checkInteger(mScene["seed"], "seed"));
 
     // Integer resolution values
     const Value& resolution = mScene["resolution"];
     if (checkTuple(resolution, "resolution", 2)) {
-        image.resize(sampleValue(resolution[0u]), sampleValue(resolution[1]));
+        image.resize(checkInteger(resolution[0u], "resolution[0]"),
+                     checkInteger(resolution[1], "resolution[1]"));
     }
 
     // Other cached tuples
@@ -54,7 +55,7 @@ ZRender::ZRender(const Value &scene)
         for (unsigned i = 0; i < mLights.Size(); ++i) {
             const Value &light = mLights[i];
             if (checkTuple(light, "light", 7))
-                mLightPower += sampleValue(light[0u]);
+                mLightPower += light[0u].GetDouble();
         }
     }
     if (mLightPower <= 0.0) {
@@ -80,17 +81,36 @@ ZRender::ZRender(const Value &scene)
 
 void ZRender::render(std::vector<unsigned char> &pixels)
 {
-    unsigned numRays = sampleValue(mScene["rays"]);
-    double exposure = sampleValue(mScene["exposure"]);
+    unsigned numRays = checkInteger(mScene["rays"], "rays");
+    double exposure = mScene["exposure"].GetDouble();
 
-    for (unsigned i = numRays; i; --i)
-        traceRay();
+    for (unsigned i = numRays; i; --i) {
+        Sampler s(mRandom.uniform32());
+        traceRay(s);
+    }
 
     // Exposure calculation as a backward-compatible generalization of zenphoton.com.
     double areaScale = sqrt(double(image.width()) * image.height() / (1024 * 576));
     double scale = exp(1.0 + 10.0 * exposure) * areaScale / numRays;
 
     image.render(pixels, scale, 1.0);
+}
+
+int ZRender::checkInteger(const Value &v, const char *noun)
+{
+    /*
+     * Convenience method to evaluate an integer. If it's Null, returns zero quietly.
+     * If it's a valid integer, returns it quietly. Otherwise returns zero and logs an error.
+     */
+
+    if (v.IsNull())
+        return 0;
+
+    if (v.IsInt())
+        return v.GetInt();
+
+    mError << "'" << noun << "' expected an integer value\n";
+    return 0;
 }
 
 bool ZRender::checkTuple(const Value &v, const char *noun, unsigned expected)
@@ -148,28 +168,7 @@ bool ZRender::checkMaterialValue(int index)
     return result;
 }
 
-double ZRender::sampleValue(const Value &v)
-{
-    /*
-     * Stochastically sample a JSON value which may be a random variable.
-     * 'v' may be any of the following JSON constructs:
-     *
-     *      1.0             A single number. Always returns this value.
-     *      null            Synonymous with zero.
-     *      [ 1.0, 5.0 ]    A list of exactly two numbers. Samples uniformly.
-     *      others          Reserved for future definition. (Zero)
-     */
-
-    if (v.IsNumber())
-        return v.GetDouble();
-
-    if (v.IsArray() && v.Size() == 2 && v[0U].IsNumber() && v[1].IsNumber())
-        return mRandom.uniform(v[0U].GetDouble(), v[1].GetDouble());
-
-    return 0;
-}
-
-const ZRender::Value& ZRender::chooseLight()
+const ZRender::Value& ZRender::chooseLight(Sampler &s)
 {
     // Pick a random light, using the light power as a probability weight.
     // Fast path for scenes with only one light.
@@ -178,13 +177,13 @@ const ZRender::Value& ZRender::chooseLight()
     unsigned last = mLights.Size() - 1;
 
     if (i != last) {
-        double r = mRandom.uniform(0, mLightPower);
+        double r = s.uniform(0, mLightPower);
         double sum = 0;
 
         // Check all lights except the last
         do {
             const Value& light = mLights[i++];
-            sum += sampleValue(light[0u]);
+            sum += s.value(light[0u]);
             if (r <= sum)
                 return light;
         } while (i != last);
@@ -194,7 +193,7 @@ const ZRender::Value& ZRender::chooseLight()
     return mLights[last];
 }
 
-void ZRender::traceRay()
+void ZRender::traceRay(Sampler &s)
 {
     IntersectionData d;
     d.object = 0;
@@ -204,16 +203,16 @@ void ZRender::traceRay()
 
     // Sample the viewport once per ray. (e.g. for camera motion blur)
     ViewportSample v;
-    initViewport(v);
+    initViewport(s, v);
 
     // Initialize the ray by sampling a light
-    initRay(d.ray, chooseLight());
+    initRay(s, d.ray, chooseLight(s));
 
     // Look for a large but bounded number of bounces
     for (unsigned bounces = 1000; bounces; --bounces) {
 
         // Intersect with an object or the edge of the viewport
-        bool hit = rayIntersect(d, v);
+        bool hit = rayIntersect(d, s, v);
 
         // Draw a line from d.ray.origin to d.point
         image.line( 0, 
@@ -227,21 +226,21 @@ void ZRender::traceRay()
             break;
         }
 
-        if (!rayMaterial(d)) {
+        if (!rayMaterial(d, s)) {
             // Ray was absorbed by material
             break;
         }
     }
 }
 
-void ZRender::initRay(Ray &r, const Value &light)
+void ZRender::initRay(Sampler &s, Ray &r, const Value &light)
 {
-    double cartesianX = sampleValue(light[1]);
-    double cartesianY = sampleValue(light[2]);
-    double polarAngle = sampleValue(light[3]) * (M_PI / 180.0);
-    double polarDistance = sampleValue(light[4]);
-    double rayAngle = sampleValue(light[5]) * (M_PI / 180.0);
-    double wavelength = sampleValue(light[6]);
+    double cartesianX = s.value(light[1]);
+    double cartesianY = s.value(light[2]);
+    double polarAngle = s.value(light[3]) * (M_PI / 180.0);
+    double polarDistance = s.value(light[4]);
+    double rayAngle = s.value(light[5]) * (M_PI / 180.0);
+    double wavelength = s.value(light[6]);
 
     r.origin.x = cartesianX + cos(polarAngle) * polarDistance;
     r.origin.y = cartesianY + sin(polarAngle) * polarDistance;
@@ -250,17 +249,17 @@ void ZRender::initRay(Ray &r, const Value &light)
     r.wavelength = wavelength;
 }
 
-void ZRender::initViewport(ViewportSample &v)
+void ZRender::initViewport(Sampler &s, ViewportSample &v)
 {
     // Sample the viewport. We do this once per ray.
 
-    v.origin.x = sampleValue(mViewport[0u]);
-    v.origin.y = sampleValue(mViewport[1]);
-    v.size.x = sampleValue(mViewport[2]);
-    v.size.y = sampleValue(mViewport[3]);
+    v.origin.x = s.value(mViewport[0u]);
+    v.origin.y = s.value(mViewport[1]);
+    v.size.x = s.value(mViewport[2]);
+    v.size.y = s.value(mViewport[3]);
 }
 
-bool ZRender::rayIntersect(IntersectionData &d, const ViewportSample &v)
+bool ZRender::rayIntersect(IntersectionData &d, Sampler &s, const ViewportSample &v)
 {
     /*
      * Sample all objects in the scene that d.ray might hit. If we hit an object,
@@ -278,7 +277,7 @@ bool ZRender::rayIntersect(IntersectionData &d, const ViewportSample &v)
     for (unsigned i = 0, e = mObjects.Size(); i != e; ++i) {
         const Value &object = mObjects[i];
 
-        if (d.object != &object && rayIntersectObject(temp, object) && temp.distance < closest.distance) {
+        if (d.object != &object && rayIntersectObject(temp, s, object) && temp.distance < closest.distance) {
             closest = temp;
             closest.object = &object;
         }
@@ -294,7 +293,7 @@ bool ZRender::rayIntersect(IntersectionData &d, const ViewportSample &v)
     return true;
 }
 
-bool ZRender::rayIntersectObject(IntersectionData &d, const Value &object)
+bool ZRender::rayIntersectObject(IntersectionData &d, Sampler &s, const Value &object)
 {
     /*
      * Does this ray intersect a specific object? This samples the object once,
@@ -307,8 +306,8 @@ bool ZRender::rayIntersectObject(IntersectionData &d, const Value &object)
     if (object.Size() == 5) {
         // Line segment
 
-        Vec2 origin = { sampleValue(object[1]), sampleValue(object[2]) };
-        Vec2 delta = { sampleValue(object[3]), sampleValue(object[4]) };
+        Vec2 origin = { s.value(object[1]), s.value(object[2]) };
+        Vec2 delta = { s.value(object[3]), s.value(object[4]) };
 
         if (d.ray.intersectSegment(origin, delta, d.distance)) {
             d.point = d.ray.pointAtDistance(d.distance);
@@ -345,7 +344,7 @@ void ZRender::rayIntersectBounds(IntersectionData &d, const ViewportSample &v)
     d.point = d.ray.pointAtDistance(furthest);
 }
 
-bool ZRender::rayMaterial(IntersectionData &d)
+bool ZRender::rayMaterial(IntersectionData &d, Sampler &s)
 {
     /*
      * Sample the material indicated by the intersection 'd' and update the ray.
@@ -357,7 +356,7 @@ bool ZRender::rayMaterial(IntersectionData &d)
     unsigned id = object[0u].GetUint();
     const Value &material = mMaterials[id];
 
-    double r = mRandom.uniform();
+    double r = s.uniform();
     double sum = 0;
 
     // Loop over all material outcomes, pick one according to our random variable.
@@ -365,14 +364,14 @@ bool ZRender::rayMaterial(IntersectionData &d)
         const Value& outcome = material[i];
         sum += outcome[0u].GetDouble();
         if (r <= sum)
-            return rayMaterialOutcome(d, outcome);
+            return rayMaterialOutcome(d, s, outcome);
     }
 
     // Absorbed
     return false;
 }
 
-bool ZRender::rayMaterialOutcome(IntersectionData &d, const Value &outcome)
+bool ZRender::rayMaterialOutcome(IntersectionData &d, Sampler &s, const Value &outcome)
 {
     // Check for 2-tuple outcomes
     if (outcome.IsArray() && outcome.Size() == 2) {
@@ -385,7 +384,7 @@ bool ZRender::rayMaterialOutcome(IntersectionData &d, const Value &outcome)
                 // Perfectly diffuse, emit the ray with a random angle.
                 case 'd':
                     d.ray.origin = d.point;
-                    d.ray.setAngle(mRandom.uniform(0, M_PI * 2.0));
+                    d.ray.setAngle(s.uniform(0, M_PI * 2.0));
                     return true;
 
                 // Perfectly transparent, emit the ray with no change in angle.

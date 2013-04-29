@@ -30,6 +30,7 @@
 #include "prng.h"
 #include "histogramimage.h"
 #include "ray.h"
+#include "sampler.h"
 #include <sstream>
 #include <vector>
 
@@ -83,24 +84,24 @@ private:
 
     // Data model
     bool checkTuple(const Value &v, const char *noun, unsigned expected);
+    int checkInteger(const Value &v, const char *noun);
     bool checkMaterialID(const Value &v);
     bool checkMaterialValue(int index);
-    double sampleValue(const Value &v);
 
     // Raytracer entry point
-    void traceRay();
+    void traceRay(Sampler &s);
 
     // Light sampling
-    const Value &chooseLight();
-    void initRay(Ray &r, const Value &light);
-    void initViewport(ViewportSample &v);
+    const Value &chooseLight(Sampler &s);
+    void initRay(Sampler &s, Ray &r, const Value &light);
+    void initViewport(Sampler &s, ViewportSample &v);
 
     // Material sampling
-    bool rayMaterial(IntersectionData &d);
-    bool rayMaterialOutcome(IntersectionData &d, const Value &outcome);
+    bool rayMaterial(IntersectionData &d, Sampler &s);
+    bool rayMaterialOutcome(IntersectionData &d, Sampler &s, const Value &outcome);
 
     // Object sampling
-    bool rayIntersect(IntersectionData &d, const ViewportSample &v);
-    bool rayIntersectObject(IntersectionData &d, const Value &object);
+    bool rayIntersect(IntersectionData &d, Sampler &s, const ViewportSample &v);
+    bool rayIntersectObject(IntersectionData &d, Sampler &s, const Value &object);
     void rayIntersectBounds(IntersectionData &d, const ViewportSample &v);
 };
