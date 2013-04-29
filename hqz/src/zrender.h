@@ -45,12 +45,11 @@ public:
 
     const char *errorText() const { return mError.str().c_str(); }
     bool hasError() const { return !mError.str().empty(); }
-    unsigned width() const { return image.width(); }
-    unsigned height() const { return image.height(); }
+    unsigned width() const { return mImage.width(); }
+    unsigned height() const { return mImage.height(); }
 
 private:
-    PRNG mRandom;
-    HistogramImage image;
+    HistogramImage mImage;
 
     const Value& mScene;
     const Value& mViewport;
@@ -58,6 +57,7 @@ private:
     const Value& mObjects;
     const Value& mMaterials;
 
+    uint32_t mSeed;
     double mLightPower;
     std::ostringstream mError;
 

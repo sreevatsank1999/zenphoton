@@ -38,13 +38,13 @@ ZRender::ZRender(const Value &scene)
     mLightPower(0.0)
 {
     // Seed the PRNG. (Zero by default)
-    mRandom.seed(checkInteger(mScene["seed"], "seed"));
+    mSeed = checkInteger(mScene["seed"], "seed");
 
     // Integer resolution values
     const Value& resolution = mScene["resolution"];
     if (checkTuple(resolution, "resolution", 2)) {
-        image.resize(checkInteger(resolution[0u], "resolution[0]"),
-                     checkInteger(resolution[1], "resolution[1]"));
+        mImage.resize(checkInteger(resolution[0u], "resolution[0]"),
+                      checkInteger(resolution[1], "resolution[1]"));
     }
 
     // Other cached tuples
@@ -85,15 +85,15 @@ void ZRender::render(std::vector<unsigned char> &pixels)
     double exposure = mScene["exposure"].GetDouble();
 
     for (unsigned i = numRays; i; --i) {
-        Sampler s(mRandom.uniform32());
+        Sampler s(mSeed + i);
         traceRay(s);
     }
 
     // Exposure calculation as a backward-compatible generalization of zenphoton.com.
-    double areaScale = sqrt(double(image.width()) * image.height() / (1024 * 576));
+    double areaScale = sqrt(double(width()) * height() / (1024 * 576));
     double scale = exp(1.0 + 10.0 * exposure) * areaScale / numRays;
 
-    image.render(pixels, scale, 1.0);
+    mImage.render(pixels, scale, 1.0);
 }
 
 int ZRender::checkInteger(const Value &v, const char *noun)
@@ -198,8 +198,8 @@ void ZRender::traceRay(Sampler &s)
     IntersectionData d;
     d.object = 0;
 
-    double width = image.width();
-    double height = image.height();
+    double w = width();
+    double h = height();
 
     // Sample the viewport once per ray. (e.g. for camera motion blur)
     ViewportSample v;
@@ -215,11 +215,11 @@ void ZRender::traceRay(Sampler &s)
         bool hit = rayIntersect(d, s, v);
 
         // Draw a line from d.ray.origin to d.point
-        image.line( 0, 
-            v.xScale(d.ray.origin.x, width),
-            v.yScale(d.ray.origin.y, height),
-            v.xScale(d.point.x, width),
-            v.yScale(d.point.y, height));
+        mImage.line( 0, 
+            v.xScale(d.ray.origin.x, w),
+            v.yScale(d.ray.origin.y, h),
+            v.xScale(d.point.x, w),
+            v.yScale(d.point.y, h));
 
         if (!hit) {
             // Ray exited the scene after this.
