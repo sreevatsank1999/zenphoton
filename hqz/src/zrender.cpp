@@ -216,7 +216,7 @@ void ZRender::traceRay()
         bool hit = rayIntersect(d, v);
 
         // Draw a line from d.ray.origin to d.point
-        image.line( image.packWavelength(580.0),
+        image.line( 0, 
             v.xScale(d.ray.origin.x, width),
             v.yScale(d.ray.origin.y, height),
             v.xScale(d.point.x, width),
