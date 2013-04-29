@@ -36,10 +36,18 @@ struct Color
 
     void setWavelength(double nm);
 
+    static double blackbodyWavelength(double temperature, double uniform);
+    static void testSpectrum(double temperature);
+
     void __attribute__((always_inline)) plot(int64_t *ptr, int intensity)
     {
         ptr[0] += r * intensity;
         ptr[1] += g * intensity;
         ptr[2] += b * intensity;
+    }
+
+    bool isVisible()
+    {
+        return r || g || b;
     }
 };

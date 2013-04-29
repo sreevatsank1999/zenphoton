@@ -28,6 +28,7 @@
 #pragma once
 #include "rapidjson/document.h"
 #include "prng.h"
+#include "spectrum.h"
 
 
 /*
@@ -61,6 +62,10 @@ public:
         return mRandom.uniform(a, b);
     }
 
+    double blackbody(double temperature) {
+        return Color::blackbodyWavelength(temperature, uniform());
+    }
+
     double value(const Value &v)
     {
         if (v.IsNumber()) {
@@ -68,8 +73,15 @@ public:
             return v.GetDouble();
         }
 
-        if (v.IsArray() && v.Size() == 2 && v[0u].IsNumber() && v[1].IsNumber())
-            return uniform(v[0u].GetDouble(), v[1].GetDouble());
+        if (v.IsArray() && v.Size() == 2 && v[0u].IsNumber()) {
+            // 2-tuples starting with a number
+
+            if (v[1].IsNumber())
+                return uniform(v[0u].GetDouble(), v[1].GetDouble());
+
+            if (v[1].IsString() && v[1].GetStringLength() == 1 && v[1].GetString()[0] == 'K')
+                return blackbody(v[0u].GetDouble());
+        }
 
         // Unknown
         return 0;

@@ -213,6 +213,11 @@ void ZRender::traceRay(Sampler &s)
     // Initialize the ray by sampling a light
     initRay(s, d.ray, chooseLight(s));
 
+    if (!d.ray.color.isVisible()) {
+        // Don't bother tracing invisible rays
+        return;
+    }
+
     // Look for a large but bounded number of bounces
     for (unsigned bounces = 1000; bounces; --bounces) {
 
