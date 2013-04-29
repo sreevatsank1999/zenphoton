@@ -27,6 +27,7 @@
 
 #pragma once
 #include <math.h>
+#include "spectrum.h"
 
 
 struct Vec2
@@ -39,8 +40,8 @@ struct Ray
 {
     Vec2 origin;
     Vec2 direction;
+    Color color;
     double slope;
-    double wavelength;
 
     void setAngle(double r)
     {

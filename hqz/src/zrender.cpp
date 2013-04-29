@@ -89,9 +89,14 @@ void ZRender::render(std::vector<unsigned char> &pixels)
         traceRay(s);
     }
 
-    // Exposure calculation as a backward-compatible generalization of zenphoton.com.
+    /* 
+     * Exposure calculation as a backward-compatible generalization of zenphoton.com.
+     * We need to correct for differences due to resolution and due to the higher
+     * fixed-point resolution we use during histogram rendering.
+     */
     double areaScale = sqrt(double(width()) * height() / (1024 * 576));
-    double scale = exp(1.0 + 10.0 * exposure) * areaScale / numRays;
+    double intensityScale = 1.0 / 8192.0;
+    double scale = exp(1.0 + 10.0 * exposure) * areaScale * intensityScale / numRays;
 
     mImage.render(pixels, scale, 1.0);
 }
@@ -215,7 +220,7 @@ void ZRender::traceRay(Sampler &s)
         bool hit = rayIntersect(d, s, v);
 
         // Draw a line from d.ray.origin to d.point
-        mImage.line( 0, 
+        mImage.line( d.ray.color,
             v.xScale(d.ray.origin.x, w),
             v.yScale(d.ray.origin.y, h),
             v.xScale(d.point.x, w),
@@ -246,7 +251,7 @@ void ZRender::initRay(Sampler &s, Ray &r, const Value &light)
     r.origin.y = cartesianY + sin(polarAngle) * polarDistance;
 
     r.setAngle(rayAngle);
-    r.wavelength = wavelength;
+    r.color.setWavelength(wavelength);
 }
 
 void ZRender::initViewport(Sampler &s, ViewportSample &v)

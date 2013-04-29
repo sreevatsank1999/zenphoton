@@ -28,24 +28,18 @@
 #pragma once
 #include <stdint.h>
 #include <math.h>
-#include <vector>
-#include <algorithm>
-#include "spectrum.h"
 
 
-class HistogramImage
+struct Color
 {
-public:
-    void resize(unsigned w, unsigned h);
-    void clear();
-    void render(std::vector<unsigned char> &rgb, double scale, double exponent);
-    void line(Color color, double x0, double y0, double x1, double y1);
+    int r, g, b;
 
-    unsigned width() const { return mWidth; }
-    unsigned height() const { return mHeight; }
+    void setWavelength(double nm);
 
-private:
-    static const unsigned kChannels = 3;
-    uint32_t mWidth, mHeight;
-    std::vector<int64_t> mCounts;
+    void __attribute__((always_inline)) plot(int64_t *ptr, int intensity)
+    {
+        ptr[0] += r * intensity;
+        ptr[1] += g * intensity;
+        ptr[2] += b * intensity;
+    }
 };

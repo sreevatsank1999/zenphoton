@@ -2,6 +2,8 @@ BINS := hqz
 
 HQZ_OBJS := \
 	src/zrender.o \
+	src/histogramimage.o \
+	src/spectrum.o \
 	src/main.o \
 	src/lodepng.o
 
