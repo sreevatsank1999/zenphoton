@@ -55,7 +55,9 @@ void HistogramImage::render(std::vector<unsigned char> &rgb, double scale, doubl
     rgb.resize(e);
 
     for (; i != e; ++i) {
-        double v = pow(mCounts[i] * scale, exponent) + rng.uniform();
+        double u = std::max(0.0, mCounts[i] * scale);
+        double dither = rng.uniform();
+        double v = 255.0 * pow(u, exponent) + dither;
         rgb[i] = std::max(0.0, std::min(255.9, v));
     }
 }

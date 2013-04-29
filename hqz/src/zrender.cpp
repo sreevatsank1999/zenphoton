@@ -84,6 +84,17 @@ void ZRender::render(std::vector<unsigned char> &pixels)
     unsigned numRays = checkInteger(mScene["rays"], "rays");
     double exposure = mScene["exposure"].GetDouble();
 
+    double gamma = 0.0;
+    if (mScene["gamma"].IsNumber())
+        gamma = mScene["gamma"].GetDouble();
+    if (gamma <= 0.0)
+        gamma = 1.0;
+
+    /*
+     * Note that each ray is seeded separately, so that rays are independent events
+     * with respect to the PRNG sequence. This helps keep our noise pattern stationary,
+     * which is a nice effect to have during animation.
+     */
     for (unsigned i = numRays; i; --i) {
         Sampler s(mSeed + i);
         traceRay(s);
@@ -95,10 +106,10 @@ void ZRender::render(std::vector<unsigned char> &pixels)
      * fixed-point resolution we use during histogram rendering.
      */
     double areaScale = sqrt(double(width()) * height() / (1024 * 576));
-    double intensityScale = mLightPower / 8192.0;
+    double intensityScale = mLightPower / (255.0 * 8192.0);
     double scale = exp(1.0 + 10.0 * exposure) * areaScale * intensityScale / numRays;
 
-    mImage.render(pixels, scale, 1.0);
+    mImage.render(pixels, scale, 1.0 / gamma);
 }
 
 int ZRender::checkInteger(const Value &v, const char *noun)

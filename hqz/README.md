@@ -45,6 +45,8 @@ Optional members:
 
 * **"seed"**: *integer*
 	* Defines the 32-bit seed value for our pseudorandom number generator. Changing this value will change the specific pattern of noise in the rendering. By default this is arbitrarily set to zero.
+* **"gamma"**: *float*
+    * Output gamma for the renderer. By default the output is linear, for compatibility with [zenphoton.com](http://zenphoton.com). If this is a nonzero number X, light intensity is raised to the power of 1/x.
 
 ### Sampled Values
 
