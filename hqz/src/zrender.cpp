@@ -206,17 +206,13 @@ void ZRender::traceRay(Sampler &s)
     double w = width();
     double h = height();
 
+    // Initialize the ray by sampling a light
+    if (!initRay(s, d.ray, chooseLight(s)))
+        return;
+
     // Sample the viewport once per ray. (e.g. for camera motion blur)
     ViewportSample v;
     initViewport(s, v);
-
-    // Initialize the ray by sampling a light
-    initRay(s, d.ray, chooseLight(s));
-
-    if (!d.ray.color.isVisible()) {
-        // Don't bother tracing invisible rays
-        return;
-    }
 
     // Look for a large but bounded number of bounces
     for (unsigned bounces = 1000; bounces; --bounces) {
@@ -243,20 +239,25 @@ void ZRender::traceRay(Sampler &s)
     }
 }
 
-void ZRender::initRay(Sampler &s, Ray &r, const Value &light)
+bool ZRender::initRay(Sampler &s, Ray &r, const Value &light)
 {
+    // Early out for invisible wavelengths 
+    double wavelength = s.value(light[6]);
+    r.color.setWavelength(wavelength);
+    if (!r.color.isVisible())
+        return false;
+
     double cartesianX = s.value(light[1]);
     double cartesianY = s.value(light[2]);
     double polarAngle = s.value(light[3]) * (M_PI / 180.0);
     double polarDistance = s.value(light[4]);
-    double rayAngle = s.value(light[5]) * (M_PI / 180.0);
-    double wavelength = s.value(light[6]);
-
     r.origin.x = cartesianX + cos(polarAngle) * polarDistance;
     r.origin.y = cartesianY + sin(polarAngle) * polarDistance;
 
+    double rayAngle = s.value(light[5]) * (M_PI / 180.0);
     r.setAngle(rayAngle);
-    r.color.setWavelength(wavelength);
+
+    return true;
 }
 
 void ZRender::initViewport(Sampler &s, ViewportSample &v)

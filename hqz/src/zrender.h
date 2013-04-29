@@ -93,7 +93,7 @@ private:
 
     // Light sampling
     const Value &chooseLight(Sampler &s);
-    void initRay(Sampler &s, Ray &r, const Value &light);
+    bool initRay(Sampler &s, Ray &r, const Value &light);
     void initViewport(Sampler &s, ViewportSample &v);
 
     // Material sampling
