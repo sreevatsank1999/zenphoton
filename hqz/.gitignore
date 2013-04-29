@@ -1,7 +1,4 @@
 *.o
 *.png
-*.dSYM
 hqz
-hqz.build
-xcuserdata
 
