@@ -7,13 +7,6 @@ High Quality Zen (`hqz`) is a command line tool which converts a JSON scene desc
 
 Artwork from [zenphoton.com](http://zenphoton.com) may be converted to JSON using an included zen2json script. This can be used to render print-quality versions of existing images, or as a starting point for experimenting with the other capabilities of `hqz`.
 
-Planned features:
-
-* Random variables as first-class objects. (Stochastically sample *anything*, render great motion blur.)
-* Color rendering. Light rays model wavelength, lights and materials can specify spectra.
-* Stopping condition based on a quality metric.
-* Tools for dispatching video frames to an AWS compute cluster.
-* Blender plugin for authoring animations.
 
 Build
 -----
@@ -43,15 +36,15 @@ The JSON input file is an object with a number of mandatory members:
 	* A list of all objects in the scene. (Details below)
 * **"materials"**: [ *material 0*, *material 1*, … ]
 	* A list of all materials in the scene. (Details below)
+* **"exposure"**: *float*
+    * Sets the exposure (brightness) of the rendering. Units are an arbitrary logarithmic scale which matches [zenphoton.com](http://zenphoton.com)'s exposure slider over the range [0,1].
+* **"rays"**: *integer*
+    * Number of rays to cast. Note that some rays may be outside the visible range if you're using a blackbody random varaible for your light wavelength, so this number may need to be higher than otherwise.
 
 Optional members:
 
 * **"seed"**: *integer*
 	* Defines the 32-bit seed value for our pseudorandom number generator. Changing this value will change the specific pattern of noise in the rendering. By default this is arbitrarily set to zero.
-* **"exposure"**: *float*
-    * Sets the exposure (brightness) of the rendering. Units are an arbitrary logarithmic scale which matches [zenphoton.com](http://zenphoton.com)'s exposure slider over the range [0,1]. If this is null or missing, we use an automatic exposure algorithm.
-* **"rays"**: *integer*
-    * Cast a fixed number of rays. If this is null or missing, we use an automatic quality metric.
 
 ### Sampled Values
 
@@ -84,8 +77,6 @@ Scene objects are things that interact with rays once they've been emitted. Vari
 
 * [ *material*, *x0*, *y0*, *dx*, *dy* ]
 	* A line segment, extending from (x0, y0) to (x0 + dx, y0 + dy). Coordinates are all sampled.
-* [ *material*, *x0*, *y0*, *dx0*, *dy0*, *dx1*, *dy1*, … ]
-	* A path made of connected line segments. All deltas are relative to (x0, y0).
 * Etc.
 	* Other values are reserved for future use.
 
