@@ -25,6 +25,7 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <string.h>
 #include "histogramimage.h"
 #include "prng.h"
 

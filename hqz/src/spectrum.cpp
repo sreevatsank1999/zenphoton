@@ -25,6 +25,8 @@
  * OTHER DEALINGS IN THE SOFTWARE.
  */
 
+#include <string.h>
+#include <stdio.h>
 #include <algorithm>
 #include "spectrum.h"
 

@@ -12,7 +12,7 @@ CDEPS := src/*.h
 CCFLAGS := -Isrc
 LIBS := -lstdc++ -lm
 
-CCFLAGS += -Wall -Wno-gnu -Werror -g
+CCFLAGS += -Wall -g
 CCFLAGS += -O3 -ffast-math -fno-exceptions
 
 all: $(BINS)
