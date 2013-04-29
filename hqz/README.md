@@ -39,12 +39,12 @@ The JSON input file is an object with a number of mandatory members:
 * **"exposure"**: *float*
     * Sets the exposure (brightness) of the rendering. Units are an arbitrary logarithmic scale which matches [zenphoton.com](http://zenphoton.com)'s exposure slider over the range [0,1].
 * **"rays"**: *integer*
-    * Number of rays to cast.
+    * Number of rays to cast. Larger numbers will take more time to render, but result in smoother images. Lower numbers will be faster, but a "grain" will be visible in the image as you can see the individual rays.
 
 Optional members:
 
 * **"seed"**: *integer*
-	* Defines the 32-bit seed value for our pseudorandom number generator. Changing this value will change the specific pattern of noise in the rendering. By default this is arbitrarily set to zero.
+	* Defines the 32-bit seed value for our pseudorandom number generator. Changing this value will change the specific pattern of noise in the rendering. By default this is arbitrarily set to zero. Controlling the noise pattern may be useful when rendering animations. By default, the PRNG is reinitialized using consecutive seeds for each ray. This means that a stationary pattern of rays will be visible from each light source. By changing the seed, this noise pattern is changed. Another way to think of it: there are a finite number of possible rays that could be traced in any given scene, and we choose to render a range of these rays numbered from `seed` to `seed + rays`. Making small changes to 'seed' will have the effect of cycling new rays in and old rays out. Making large changes in 'seed' will appear to randomize the rays entirely.
 * **"gamma"**: *float*
     * Output gamma for the renderer. By default the output is linear, for compatibility with [zenphoton.com](http://zenphoton.com). If this is a nonzero number X, light intensity is raised to the power of 1/x.
 

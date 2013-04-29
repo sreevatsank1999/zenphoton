@@ -1,16 +1,28 @@
 #!/usr/bin/env coffee
 #
+# HQZ Example
+# -----------
+#
 # Simple animation test, using node.js to spawn rendering processes.
+#
+# To compress the results:
+# (via http://ffmpeg.org/trac/ffmpeg/wiki/EncodeforYouTube)
+#
+#   ffmpeg -i frame-%04d.png -c:v libx264 -preset slow -crf 18 -pix_fmt yuv420p output.mkv
+#
+# Micah Elizabeth Scott <micah@scanlime.org>
+# This file is released into the public domain.
 #
 
 scene = 
     resolution: [1024, 576]
     rays: 500000
+    seed: 0
     viewport: [0, 0, 1024, 576]
     exposure: 0.7
     gamma: 1.8
     lights: [
-        [1.0, 697, 0, [0, 360], 80, [0, 360],
+        [1.0, 697, 0, [0, 360], 70, [0, 360],
             [5000, "K"]
         ]
     ]
@@ -58,7 +70,7 @@ scene =
         [0, 441, 103, 12, 6]
     ]
     materials: [
-        [[1, "d"]]
+        [[0.9, "d"], [0.1, "r"]]
     ]
 
 
@@ -71,6 +83,7 @@ pad = (str, length) ->
 
 frameQueue = for x in [0 .. 1024]
     scene.lights[0][1] = x
+    scene.seed = scene.seed + 10000
     [ "frame-#{ pad(''+x, 4) }.png", JSON.stringify(scene) ]
 
 startWorker = () ->
