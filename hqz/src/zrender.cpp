@@ -95,7 +95,7 @@ void ZRender::render(std::vector<unsigned char> &pixels)
      * fixed-point resolution we use during histogram rendering.
      */
     double areaScale = sqrt(double(width()) * height() / (1024 * 576));
-    double intensityScale = 1.0 / 8192.0;
+    double intensityScale = mLightPower / 8192.0;
     double scale = exp(1.0 + 10.0 * exposure) * areaScale * intensityScale / numRays;
 
     mImage.render(pixels, scale, 1.0);
@@ -241,12 +241,6 @@ void ZRender::traceRay(Sampler &s)
 
 bool ZRender::initRay(Sampler &s, Ray &r, const Value &light)
 {
-    // Early out for invisible wavelengths 
-    double wavelength = s.value(light[6]);
-    r.color.setWavelength(wavelength);
-    if (!r.color.isVisible())
-        return false;
-
     double cartesianX = s.value(light[1]);
     double cartesianY = s.value(light[2]);
     double polarAngle = s.value(light[3]) * (M_PI / 180.0);
@@ -256,6 +250,27 @@ bool ZRender::initRay(Sampler &s, Ray &r, const Value &light)
 
     double rayAngle = s.value(light[5]) * (M_PI / 180.0);
     r.setAngle(rayAngle);
+
+    /*
+     * Try to discard rays for invisible wavelengths without actually
+     * counting them as real rays. (If we count them without tracing them,
+     * our scene will render as unexpectedly dark since some of the
+     * photons will not be visible on the rendered image.)
+     */
+
+    unsigned tries = 1000;
+    for (;;) {
+        double wavelength = s.value(light[6]);
+        r.color.setWavelength(wavelength);
+        if (r.color.isVisible()) {
+            // Success
+            break;
+        } else {
+            // Can we keep looking?
+            if (!--tries)
+                return false;
+        }
+    }
 
     return true;
 }
