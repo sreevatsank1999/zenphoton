@@ -38,7 +38,7 @@ s3 = new AWS.S3({ apiVersion: '2006-03-01' }).client
 kRenderQueue = "zenphoton-hqz-render-queue"
 kResultQueue = "zenphoton-hqz-results"
 kBucketName = "hqz"
-kKeyPrefix = "tmp-"
+kKeyPrefix = "tmp/"
 
 if process.argv.length < 3
     console.log "usage: queue-submit scene.json ..."
