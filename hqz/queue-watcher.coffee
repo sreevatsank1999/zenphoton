@@ -46,9 +46,10 @@ class Watcher
                     cb error
                 if data
                     @queue = data.QueueUrl
-                    @pollQueue()
+                    log 'Watching for results...'
+                    @pollQueue cb
 
-    pollQueue: ->
+    pollQueue: (cb) ->
         sqs.receiveMessage
             QueueUrl: @queue
             MaxNumberOfMessages: 10
@@ -56,8 +57,7 @@ class Watcher
             WaitTimeSeconds: 10
 
             (error, data) =>
-                log "foobar"
-                return log "Error reading queue: " + util.inspect error if error
+                return cb error if error
                 if data and data.Messages
                     for m in data.Messages
                         do (m) =>
@@ -77,9 +77,9 @@ class Watcher
                 @pollQueue()
 
     handleMessage: (msg, cb) ->
-        console.log "#{ msg.State }# '#{ msg.SceneKey }'"
+        log "#{ msg.State } -- '#{ msg.SceneKey }'"
         if msg.State == 'finished'
-            console.log "Downloading #{ msg.OutputKey }"
+            log "Downloading #{ msg.OutputKey }"
 
             o = s3.getObject
                 Bucket: msg.OutputBucket
@@ -96,5 +96,5 @@ class Watcher
 
 qw = new Watcher
 qw.run "zenphoton-hqz-results", (error) ->
-    console.log util.inspect error
+    log util.inspect error
     process.exit 1
