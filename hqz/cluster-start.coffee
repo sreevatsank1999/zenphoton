@@ -44,7 +44,6 @@
 
 kRoleName       = 'hqz-node'
 kSpotPrice      = "0.25"            # Maximum price per instance-hour
-kInstanceCount  = 8
 kImageId        = "ami-2efa9d47"    # Ubuntu 12.04 LTS, x64, us-east-1
 kInstanceType   = "c1.xlarge"       # High-CPU instance
 
@@ -62,6 +61,13 @@ util = require 'util'
 iam = new AWS.IAM({ apiVersion: '2010-05-08' }).client
 ec2 = new AWS.EC2({ apiVersion: '2013-02-01' }).client
 log = (msg) -> console.log "[#{ (new Date).toJSON() }] #{msg}"
+
+if process.argv.length != 3
+    console.log "usage: cluster-start <number of instances>"
+    process.exit 1
+
+numInstances = process.argv[2] | 0
+process.exit 0 if numInstances <= 0
 
 script = """
     #!/bin/sh
@@ -146,7 +152,7 @@ async.waterfall [
         log "Requesting spot instances"
         ec2.requestSpotInstances
             SpotPrice: kSpotPrice
-            InstanceCount: kInstanceCount
+            InstanceCount: numInstances
             Type: "one-time"
             LaunchSpecification:
                 ImageId: kImageId
