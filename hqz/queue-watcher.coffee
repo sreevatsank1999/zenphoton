@@ -31,13 +31,39 @@ AWS = require 'aws-sdk'
 async = require 'async'
 util = require 'util'
 fs = require 'fs'
+os = require 'os'
 
 log = (msg) -> console.log "[#{ (new Date).toJSON() }] #{msg}"
+outputFile = "queue-watcher.log"
+
 sqs = new AWS.SQS({ apiVersion: '2012-11-05' }).client
 s3 = new AWS.S3({ apiVersion: '2006-03-01' }).client
 
+fileLog = (msg) ->
+    out = fs.createWriteStream outputFile, {flags: 'a'}
+    out.end msg + os.EOL
+
 
 class Watcher
+    constructor: ->
+        @numStarted = 0
+        @numFinished = 0
+
+    replaySync: (filename, cb) ->
+        try
+            lines = fs.readFileSync(filename).toString().split(os.EOL)
+        catch error
+            # Okay if this file doesn't exist
+            cb error if error.code != 'ENOENT'
+            return
+
+        for line in lines
+            if line.length and line[0] == '{'
+                try
+                    @handleMessage JSON.parse(line), cb
+                catch error
+                    cb error
+
     run: (queueName, cb) ->
         sqs.createQueue
             QueueName: queueName
@@ -47,9 +73,9 @@ class Watcher
                 if data
                     @queue = data.QueueUrl
                     log 'Watching for results...'
-                    @pollQueue cb
+                    @pollQueue()
 
-    pollQueue: (cb) ->
+    pollQueue: ->
         sqs.receiveMessage
             QueueUrl: @queue
             MaxNumberOfMessages: 10
@@ -57,13 +83,13 @@ class Watcher
             WaitTimeSeconds: 10
 
             (error, data) =>
-                return cb error if error
+                return log error if error
                 if data and data.Messages
                     for m in data.Messages
                         do (m) =>
                             cb = (error) => @messageComplete(error, m)
                             try
-                                @handleMessage JSON.parse(m.Body), cb
+                                @logAndHandleMessage JSON.parse(m.Body), cb
                             catch error
                                 cb error
                 @pollQueue()
@@ -76,25 +102,25 @@ class Watcher
             (error, data) =>
                 @pollQueue()
 
-    handleMessage: (msg, cb) ->
-        log "#{ msg.State } -- '#{ msg.SceneKey }'"
+    messageURL: (msg) ->
         if msg.State == 'finished'
-            log "Downloading #{ msg.OutputKey }"
+            return "http://#{ msg.OutputBucket }.s3.amazonaws.com/#{ msg.OutputKey }"
 
-            o = s3.getObject
-                Bucket: msg.OutputBucket
-                Key: msg.OutputKey
+    logAndHandleMessage: (msg, cb) ->
+        fileLog JSON.stringify msg
+        url = @messageURL msg
+        fileLog url if url
+        @handleMessage msg, cb
 
-            s = o.createReadStream()
-            s.pipe fs.createWriteStream msg.OutputKey
-            s.on 'end', () =>
-                log "Finished downloading #{ msg.OutputKey }"
-                cb()
-        else
-            cb()
+    handleMessage: (msg, cb) ->
+        @numStarted += 1 if msg.State == 'started'
+        @numFinished += 1 if msg.State == 'finished'
+        arg = @messageURL(msg) or msg.SceneKey
+        log "[Seen: #{@numStarted}+ / #{@numFinished}-] -- #{ msg.State } -- #{ arg }"
+        cb()
 
 
+cb = (error) -> log util.inspect error if error
 qw = new Watcher
-qw.run "zenphoton-hqz-results", (error) ->
-    log util.inspect error
-    process.exit 1
+qw.replaySync outputFile, cb
+qw.run "zenphoton-hqz-results"
