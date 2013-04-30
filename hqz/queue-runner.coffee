@@ -159,12 +159,16 @@ class MessageHandler
                     cb
 
             (data, cb) =>
-                # Store downloaded scene
-                @scene = JSON.parse data.Body
-                if @msg.SceneIndex >= 0
-                    @scene = @scene[@msg.SceneIndex]
+                try
+                    if @msg.SceneIndex >= 0
+                        @scene = JSON.stringify( JSON.parse(data.Body)[@msg.SceneIndex] )
+                        log "Starting work on #{ @msg.SceneKey }[#{ @msg.SceneIndex }]"
+                    else
+                        @scene = data.Body
+                        log "Starting work on #{ @msg.SceneKey }"
+                catch error
+                    return cb error
 
-                log "Starting work on #{ @msg.SceneKey }"
                 @msg.StartedTime = (new Date).toJSON()
                 @msg.State = 'started'
 
@@ -186,10 +190,12 @@ class MessageHandler
                 @msg.FinishTime = (new Date).toJSON()
                 @msg.State = 'finished'
 
+                # Scene is publicly readable, so we can refer to frames by URL easily.
                 s3.putObject
                     Bucket: @msg.OutputBucket
                     Key: @msg.OutputKey
                     ContentType: 'image/png'
+                    ACL: 'public-read'
                     Body: data
                     cb
 
@@ -246,7 +252,7 @@ class MessageHandler
             @child = null
             cb null, bufferConcat @output
 
-        @child.stdin.write JSON.stringify @scene
+        @child.stdin.write @scene
         @child.stdin.end()
 
     heartbeat: ->
