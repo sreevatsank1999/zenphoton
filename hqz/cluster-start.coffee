@@ -44,7 +44,7 @@
 
 kRoleName       = 'hqz-node'
 kSpotPrice      = "0.25"            # Maximum price per instance-hour
-kInstanceCount  = 2
+kInstanceCount  = 8
 kImageId        = "ami-2efa9d47"    # Ubuntu 12.04 LTS, x64, us-east-1
 kInstanceType   = "c1.xlarge"       # High-CPU instance
 
