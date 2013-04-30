@@ -16,7 +16,7 @@
 
 scene = 
     resolution: [1024, 576]
-    rays: 500000
+    rays: 5000000
     seed: 0
     viewport: [0, 0, 1024, 576]
     exposure: 0.7
@@ -74,26 +74,19 @@ scene =
     ]
 
 
-spawn = require('child_process').spawn
-numCPUs = require('os').cpus().length
+fs = require 'fs'
+
 
 pad = (str, length) ->
     str = '0' + str while str.length < length
     return str
 
-frameQueue = for x in [0 .. 1024]
+for x in [0 .. 1024]
     scene.lights[0][1] = x
     scene.seed = scene.seed + 10000
-    [ "frame-#{ pad(''+x, 4) }.png", JSON.stringify(scene) ]
-
-startWorker = () ->
-    return if not frameQueue
-    [ filename, scene ] = frameQueue.shift()
-    console.log "Starting #{filename}"
-    child = spawn './hqz', ['-', filename]
-    child.on 'exit', startWorker
-    child.stdin.write scene
-    child.stdin.end()
-
-for n in [1 .. numCPUs]
-    startWorker()
+    name = "frame-#{ pad(''+x, 4) }.json"
+    do (name) ->
+        fs.writeFile name,
+            JSON.stringify(scene),
+            () ->
+                console.log 'Wrote ' + name
