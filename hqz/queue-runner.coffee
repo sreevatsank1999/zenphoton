@@ -219,7 +219,7 @@ class MessageHandler
                 log "Finalized #{@msg.SceneKey} in #{@elapsedTime()} seconds"
                 cb()
 
-        ], (error) ->
+        ], (error) =>
             @cancelWatchdog
             asyncCb error if error
 
@@ -258,8 +258,8 @@ class MessageHandler
             QueueUrl: @queue
             ReceiptHandle: @envelope.ReceiptHandle
             VisibilityTimeout: kHeartbeatSeconds * 2
-            (error) ->
-                log "Error delivering heartbeat to #{ @msg.SceneKey }: #{ util.inspect error }"
+            (error) =>
+                log "Error delivering heartbeat to #{ @msg.SceneKey }: #{ util.inspect error }" if error
 
 
 log = (msg) ->
