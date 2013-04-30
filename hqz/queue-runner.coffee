@@ -202,35 +202,33 @@ class MessageHandler
                 # Let another message start running
                 asyncCb()
 
-            (data, cb) =>
-                # Send final state change message after upload finishes
-
-                @msg.UploadedTime = (new Date).toJSON()
-                sqs.sendMessage
-                    QueueUrl: @msg.OutputQueueUrl
-                    MessageBody: JSON.stringify @msg
-                    cb
-
-            (data, cb) =>
-                # Done, we can delete the message now!
-
-                @cancelWatchdog()
-                sqs.deleteMessage
-                    QueueUrl: @queue
-                    ReceiptHandle: @envelope.ReceiptHandle
-                    cb
-
-            (data, cb) =>
-                # Finished!
-                log "Finalized #{@msg.SceneKey} in #{@elapsedTime()} seconds"
-                cb()
-
         ], (error) =>
             @cancelWatchdog
-            asyncCb error if error
+            if error
+                # Log the error
+                asyncCb error if error
+                @msg.State = 'failed'
+                @msg.Error = util.inspect error
+            else
+                @msg.UploadedTime = (new Date).toJSON()
+
+            # Send final state change message after upload finishes
+            sqs.sendMessage
+                    QueueUrl: @msg.OutputQueueUrl
+                    MessageBody: JSON.stringify @msg
+                    (error, data) =>
+                        # Done, we can delete the message now!
+                        @cancelWatchdog()
+                        sqs.deleteMessage
+                            QueueUrl: @queue
+                            ReceiptHandle: @envelope.ReceiptHandle
+                            (error, data) =>
+                                # Finished!
+                                return asyncCb error if error
+                                log "Finalized #{@msg.SceneKey} in #{@elapsedTime()} seconds"
 
     elapsedTime: () ->
-        0.001 * ((new Date).getTime() - Date.parse(@msg.StartedTime))
+        0.001 * ((new Date).getTime() - Date.parse(@msg.ReceivedTime))
 
     cancelWatchdog: () ->
         clearInterval @watchdog if @watchdog
