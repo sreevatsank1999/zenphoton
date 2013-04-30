@@ -62,8 +62,8 @@ child_process = require 'child_process'
 os = require 'os'
 
 AWS.config.maxRetries = 50
-sqs = new AWS.SQS().client
-s3 = new AWS.S3().client
+sqs = new AWS.SQS({ apiVersion: '2012-11-05' }).client
+s3 = new AWS.S3({ apiVersion: '2006-03-01' }).client
 numCPUs = require('os').cpus().length
 
 kHeartbeatSeconds = 30
@@ -90,7 +90,7 @@ class Runner
         # if we have the capacity to handle what we get back.
 
         return if @numRequested
-        count = numCPUs - @numRunning
+        count = Math.min 10, numCPUs - @numRunning
         msg = "[ #{ @numRunning } of #{ numCPUs } processes running ]"
         return log msg if count <= 0
         log msg + " -- Looking for work..."

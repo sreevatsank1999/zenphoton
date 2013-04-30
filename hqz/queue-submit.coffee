@@ -32,8 +32,8 @@ util = require 'util'
 fs = require 'fs'
 crypto = require 'crypto'
 
-sqs = new AWS.SQS().client
-s3 = new AWS.S3().client
+sqs = new AWS.SQS({ apiVersion: '2012-11-05' }).client
+s3 = new AWS.S3({ apiVersion: '2006-03-01' }).client
 
 kRenderQueue = "zenphoton-hqz-render-queue"
 kResultQueue = "zenphoton-hqz-results"
