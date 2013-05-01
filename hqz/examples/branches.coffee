@@ -41,7 +41,7 @@ drawTree = (frame, x, dx, dy) ->
     drawBranches frame, x, floorY(x), dx, dy
 
 sunlight = (frame) ->
-    angle = frame * 0.05
+    angle = frame * 0.3
     [ 1, 2000, -20, 0, 0, [angle + 90, angle + 180], [5000, 'K'] ]
 
 skylight = (frame) ->
@@ -49,7 +49,7 @@ skylight = (frame) ->
     spread = 20
     x0 = -100
     x1 = 1920 + 100
-    [ 0.8, [x0, x1], -30, 0, 0, [angle - spread, angle + spread], [8000, 'K'] ]
+    [ 1, [x0, x1], -30, 0, 0, [angle - spread, angle + spread], [8000, 'K'] ]
 
 zoomViewport = (width, height, focusX, focusY, zoom) ->
     left = focusX
@@ -71,7 +71,7 @@ frames = for frame in [0 .. 59]
     rays: 1000000
     exposure: 0.65
 
-    viewport: zoomViewport 1920, 1080, 324, 178, frame * 0.01 
+    viewport: zoomViewport 1920, 1080, 324, 178, frame * 0.005 
     seed: frame * 10
 
     lights: [
