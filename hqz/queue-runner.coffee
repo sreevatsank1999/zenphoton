@@ -60,6 +60,7 @@ async = require 'async'
 util = require 'util'
 child_process = require 'child_process'
 os = require 'os'
+zlib = require 'zlib'
 
 AWS.config.maxRetries = 50
 sqs = new AWS.SQS({ apiVersion: '2012-11-05' }).client
@@ -138,6 +139,8 @@ class Runner
 
 
 class MessageHandler
+    sceneMemo = {}
+
     constructor: (@queue, @envelope, @msg) ->
         @msg.Hostname = os.hostname()
         @msg.ReceivedTime = (new Date).toJSON()
@@ -152,23 +155,43 @@ class MessageHandler
         async.waterfall [
 
             (cb) =>
-                # Download scene data
-                s3.getObject
-                    Bucket: @msg.SceneBucket
-                    Key: @msg.SceneKey
-                    cb
+                # Download scene data if we need it.
+
+                # XXX: We may still download the same file multiple times concurrently
+                #      if a new job comes in while the file is still downloading.
+
+                if sceneMemo.Bucket == @msg.SceneBucket and sceneMemo.Key = @msg.SceneKey
+                    log "Using cached copy of #{@msg.SceneKey}"
+                    cb null, sceneMemo.Cache
+
+                else
+                    log "Downloading #{@msg.SceneKey}"
+                    s3.getObject
+                        Bucket: @msg.SceneBucket
+                        Key: @msg.SceneKey
+                        cb
 
             (data, cb) =>
+                # Cache the downloaded scene
+                sceneMemo =
+                    Bucket: @msg.SceneBucket
+                    Key: @msg.SceneKey
+                    Cache: data
+
+                # Decompress the scene
+                zlib.gunzip data.Body, cb
+
+            (data, cb) =>
+                # Decode the frame we're interested in
                 try
                     if @msg.SceneIndex >= 0
-                        @scene = JSON.stringify( JSON.parse(data.Body)[@msg.SceneIndex] )
-                        log "Starting work on #{ @msg.SceneKey }[#{ @msg.SceneIndex }]"
+                        @scene = JSON.stringify( JSON.parse(data)[@msg.SceneIndex] )
                     else
-                        @scene = data.Body
-                        log "Starting work on #{ @msg.SceneKey }"
+                        @scene = data
                 catch error
                     return cb error
 
+                log "Starting work on #{ @msg.OutputKey }"
                 @msg.StartedTime = (new Date).toJSON()
                 @msg.State = 'started'
 
@@ -186,7 +209,7 @@ class MessageHandler
 
             (data, cb) =>
                 # Upload finished scene
-                log "Finished #{@msg.SceneKey}, uploading results to #{@msg.OutputKey}"
+                log "Uploading results to #{@msg.OutputKey}"
                 @msg.FinishTime = (new Date).toJSON()
                 @msg.State = 'finished'
 
@@ -225,7 +248,7 @@ class MessageHandler
                             (error, data) =>
                                 # Finished!
                                 return asyncCb error if error
-                                log "Finalized #{@msg.SceneKey} in #{@elapsedTime()} seconds"
+                                log "Finalized #{@msg.OutputKey} in #{@elapsedTime()} seconds"
 
     elapsedTime: () ->
         0.001 * ((new Date).getTime() - Date.parse(@msg.ReceivedTime))
@@ -257,13 +280,13 @@ class MessageHandler
         # Periodically we need to reset our SQS message visibility timeout, so that
         # other nodes know we're still working on this job.
 
-        log "Still working on #{ @msg.SceneKey } (#{ @elapsedTime() } seconds)"
+        log "Still working on #{ @msg.OutputKey } (#{ @elapsedTime() } seconds)"
         sqs.changeMessageVisibility
             QueueUrl: @queue
             ReceiptHandle: @envelope.ReceiptHandle
             VisibilityTimeout: kHeartbeatSeconds * 2
             (error) =>
-                log "Error delivering heartbeat to #{ @msg.SceneKey }: #{ util.inspect error }" if error
+                log "Error delivering heartbeat to #{ @msg.OutputKey }: #{ util.inspect error }" if error
 
 
 log = (msg) ->

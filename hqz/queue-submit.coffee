@@ -31,6 +31,7 @@ async = require 'async'
 util = require 'util'
 fs = require 'fs'
 crypto = require 'crypto'
+zlib = require 'zlib'
 
 sqs = new AWS.SQS({ apiVersion: '2012-11-05' }).client
 s3 = new AWS.S3({ apiVersion: '2006-03-01' }).client
@@ -38,13 +39,25 @@ s3 = new AWS.S3({ apiVersion: '2006-03-01' }).client
 kRenderQueue = "zenphoton-hqz-render-queue"
 kResultQueue = "zenphoton-hqz-results"
 kBucketName = "hqz"
-kKeyPrefix = "tmp/"
 
-if process.argv.length < 3
-    console.log "usage: queue-submit scene.json ..."
+if process.argv.length != 4
+    console.log "usage: queue-submit job-name (scene.json | framelist.json)"
     process.exit 1
 
-scenes = ( fs.readFileSync process.argv[i] for i in [2 .. process.argv.length - 1] )
+jobName = process.argv[2]
+input = JSON.parse fs.readFileSync process.argv[3]
+
+if input.length
+    console.log "Found an animation with #{ input.length } frames"
+    frames = input
+else
+    console.log "Rendering a single frame"
+    frames = [ input ]
+
+pad = (str, length) ->
+    str = '' + str
+    str = '0' + str while str.length < length
+    return str
 
 async.waterfall [
 
@@ -53,9 +66,9 @@ async.waterfall [
         async.parallel
 
             key: (cb) ->
-                crypto.randomBytes 8, (error, data) ->
+                crypto.randomBytes 4, (error, data) ->
                     return cb error if error
-                    cb error, kKeyPrefix + data.toString 'hex'
+                    cb error, jobName + '/' + data.toString 'hex'
 
             renderQueue: (cb) ->
                 sqs.createQueue
@@ -66,42 +79,40 @@ async.waterfall [
                 sqs.createQueue
                     QueueName: kResultQueue
                     cb
+
+            sceneData: (cb) ->
+                zlib.gzip JSON.stringify(frames), cb
+
             cb
 
-    # Upload each scene in parallel
-    (par, cb) ->
-        async.map(
-            [ "#{par.key}-#{i}", scenes[i] ] for i in [0 .. scenes.length-1]
-            ([key, scene], cb) ->
+    # Upload scene
+    (obj, cb) ->
+        name = obj.key + '.json.gz'
+        console.log "Uploading scene data, #{obj.sceneData.length} bytes, as #{name}" 
+        s3.putObject
+            Bucket: kBucketName
+            ContentType: 'application/json'
+            Key: name
+            Body: obj.sceneData
+            (error, data) ->
+                return cb error if error
+                cb error, obj
 
-                # Each upload step runs in series
-                async.waterfall [
-
-                    (cb) ->
-                        s3.putObject
-                            Bucket: kBucketName
-                            ContentType: 'application/json'
-                            Key: key + '.json'
-                            Body: scene
-                            cb
-
-                    (data, cb) ->
-                        obj =
-                            SceneBucket: kBucketName
-                            SceneKey: key + '.json'
-                            OutputBucket: kBucketName
-                            OutputKey: key + '.png'
-                            OutputQueueUrl: par.resultQueue.QueueUrl
-
-                        console.log key
-
-                        sqs.sendMessage
-                            QueueUrl: par.renderQueue.QueueUrl
-                            MessageBody: JSON.stringify obj
-                            cb
-                ], cb
+    # Enqueue work items
+    (obj, cb) ->
+        console.log "Enqueueing work items"
+        sqs.sendMessageBatch
+            QueueUrl: obj.renderQueue.QueueUrl
+            Entries: for i in [0 .. frames.length - 1]
+                Id: 'item-' + i
+                MessageBody: JSON.stringify
+                    SceneBucket: kBucketName
+                    SceneKey: obj.key + '.json.gz'
+                    SceneIndex: i
+                    OutputBucket: kBucketName
+                    OutputKey: obj.key + '-' + pad(i, 4) + '.png'
+                    OutputQueueUrl: obj.resultQueue.QueueUrl
             cb
-        )
 
 ], (error) -> 
     return console.log util.inspect error if error
