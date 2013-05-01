@@ -65,10 +65,10 @@ zoomViewport = (width, height, focusX, focusY, zoom) ->
 
     [ left, top, right - left, bottom - top ]
 
-frames = for frame in [0 .. 4]
+frames = for frame in [0 .. 59]
 
     resolution: [960, 540]
-    rays: 100000
+    rays: 1000000
     exposure: 0.65
 
     viewport: zoomViewport 1920, 1080, 324, 178, frame * 0.01 
