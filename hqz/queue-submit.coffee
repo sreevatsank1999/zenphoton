@@ -85,8 +85,9 @@ async.waterfall [
 
             cb
 
-    # Upload scene
     (obj, cb) ->
+        # Upload scene
+
         name = obj.key + '.json.gz'
         console.log "Uploading scene data, #{obj.sceneData.length} bytes, as #{name}" 
         s3.putObject
@@ -98,21 +99,34 @@ async.waterfall [
                 return cb error if error
                 cb error, obj
 
+        # Prepare work items
+
+        obj.work = for i in [0 .. frames.length - 1]
+            Id: 'item-' + i
+            MessageBody: JSON.stringify
+                SceneBucket: kBucketName
+                SceneKey: obj.key + '.json.gz'
+                SceneIndex: i
+                OutputBucket: kBucketName
+                OutputKey: obj.key + '-' + pad(i, 4) + '.png'
+                OutputQueueUrl: obj.resultQueue.QueueUrl
+
     # Enqueue work items
     (obj, cb) ->
-        console.log "Enqueueing work items"
-        sqs.sendMessageBatch
-            QueueUrl: obj.renderQueue.QueueUrl
-            Entries: for i in [0 .. frames.length - 1]
-                Id: 'item-' + i
-                MessageBody: JSON.stringify
-                    SceneBucket: kBucketName
-                    SceneKey: obj.key + '.json.gz'
-                    SceneIndex: i
-                    OutputBucket: kBucketName
-                    OutputKey: obj.key + '-' + pad(i, 4) + '.png'
-                    OutputQueueUrl: obj.resultQueue.QueueUrl
+        async.whilst(
+            () -> obj.work.length > 0
+            (cb) ->
+                console.log "Enqueueing work items, #{obj.work.length} remaining"
+                batch = Math.min(10, obj.work.length)
+                thisBatch = obj.work.slice(0, batch)
+                obj.work = obj.work.slice(batch)
+                sqs.sendMessageBatch
+                    QueueUrl: obj.renderQueue.QueueUrl
+                    Entries: thisBatch
+                    cb
             cb
+        )
+
 
 ], (error) -> 
     return console.log util.inspect error if error
