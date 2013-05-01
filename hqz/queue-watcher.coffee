@@ -46,8 +46,7 @@ fileLog = (msg) ->
 
 class Watcher
     constructor: ->
-        @numStarted = 0
-        @numFinished = 0
+        @jobs = {}
 
     replaySync: (filename, cb) ->
         try
@@ -102,21 +101,32 @@ class Watcher
             (error, data) =>
                 @pollQueue()
 
-    messageURL: (msg) ->
-        if msg.State == 'finished'
-            return "http://#{ msg.OutputBucket }.s3.amazonaws.com/#{ msg.OutputKey }"
-
     logAndHandleMessage: (msg, cb) ->
         fileLog JSON.stringify msg
-        url = @messageURL msg
-        fileLog url if url
         @handleMessage msg, cb
 
     handleMessage: (msg, cb) ->
-        @numStarted += 1 if msg.State == 'started'
-        @numFinished += 1 if msg.State == 'finished'
-        arg = @messageURL(msg) or msg.SceneKey
-        log "[Seen: #{@numStarted}+ / #{@numFinished}-] -- #{ msg.State } -- #{ arg }"
+        @jobs[msg.SceneKey] = [] if not @jobs[msg.SceneKey]
+        job = @jobs[msg.SceneKey]
+        index = 0
+        index = msg.SceneIndex if msg.SceneIndex > 0
+
+        # Do we have a new URL to show?
+        if msg.State == 'finished'
+            log "http://#{ msg.OutputBucket }.s3.amazonaws.com/#{ msg.OutputKey }"
+
+        # Update the state of this render job
+        job[index] = msg.State
+
+        # Summarize the job state
+        summary = for i in [0 .. job.length - 1]
+            switch job[i]
+                when 'finished' then '#'
+                when 'started' then '.'
+                when 'failed' then '!'
+                else ' '
+
+        log "[#{ summary.join '' }] -- #{msg.SceneKey} [#{index}] #{msg.State}"
         cb()
 
 
