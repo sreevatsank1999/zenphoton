@@ -31,7 +31,6 @@ AWS = require 'aws-sdk'
 async = require 'async'
 util = require 'util'
 fs = require 'fs'
-os = require 'os'
 
 log = (msg) -> console.log "[#{ (new Date).toJSON() }] #{msg}"
 outputFile = "queue-watcher.log"
@@ -41,7 +40,7 @@ s3 = new AWS.S3({ apiVersion: '2006-03-01' }).client
 
 fileLog = (msg) ->
     out = fs.createWriteStream outputFile, {flags: 'a'}
-    out.end msg + os.EOL
+    out.end msg + '\n'
 
 
 class Watcher
@@ -50,7 +49,7 @@ class Watcher
 
     replaySync: (filename, cb) ->
         try
-            lines = fs.readFileSync(filename).toString().split(os.EOL)
+            lines = fs.readFileSync(filename).toString().split('\n')
         catch error
             # Okay if this file doesn't exist
             cb error if error.code != 'ENOENT'
