@@ -1,5 +1,21 @@
 #!/usr/bin/env coffee
 #
+#   Job Submitter. Uploads the JSON scene description for a job
+#   and enqueues a work item for each frame.
+#
+#   AWS configuration comes from the environment:
+#
+#      AWS_ACCESS_KEY_ID
+#      AWS_SECRET_ACCESS_KEY
+#      AWS_REGION
+#      HQZ_BUCKET
+#
+#   Required Node modules:
+#
+#      npm install aws-sdk coffee-script async
+#
+######################################################################
+#
 #   This file is part of HQZ, the batch renderer for Zen Photon Garden.
 #
 #   Copyright (c) 2013 Micah Elizabeth Scott <micah@scanlime.org>
@@ -32,20 +48,25 @@ util = require 'util'
 fs = require 'fs'
 crypto = require 'crypto'
 zlib = require 'zlib'
+path = require 'path'
 
 sqs = new AWS.SQS({ apiVersion: '2012-11-05' }).client
 s3 = new AWS.S3({ apiVersion: '2006-03-01' }).client
 
 kRenderQueue = "zenphoton-hqz-render-queue"
 kResultQueue = "zenphoton-hqz-results"
-kBucketName = "hqz"
+kBucketName = process.env.HQZ_BUCKET
 
-if process.argv.length != 4
-    console.log "usage: queue-submit job-name (scene.json | framelist.json)"
+if process.argv.length != 3
+    console.log "usage: queue-submit JOBNAME.json"
     process.exit 1
 
-jobName = process.argv[2]
-input = JSON.parse fs.readFileSync process.argv[3]
+jobName = path.basename process.argv[2], '.json'
+rawInput = fs.readFileSync process.argv[2]
+input = JSON.parse rawInput
+inputHash = crypto.createHash('sha1').update(rawInput).digest('hex').slice(0, 8)
+key = jobName + '/' + inputHash
+jsonKey = key + '.json.gz'
 
 if input.length
     console.log "Found an animation with #{ input.length } frames"
@@ -65,11 +86,6 @@ async.waterfall [
     (cb) ->
         async.parallel
 
-            key: (cb) ->
-                crypto.randomBytes 4, (error, data) ->
-                    return cb error if error
-                    cb error, jobName + '/' + data.toString 'hex'
-
             renderQueue: (cb) ->
                 sqs.createQueue
                     QueueName: kRenderQueue
@@ -86,18 +102,30 @@ async.waterfall [
             cb
 
     (obj, cb) ->
-        # Upload scene
+        # Upload scene only if it isn't already on S3
 
-        name = obj.key + '.json.gz'
-        console.log "Uploading scene data, #{obj.sceneData.length} bytes, as #{name}" 
-        s3.putObject
+        s3.headObject
             Bucket: kBucketName
-            ContentType: 'application/json'
-            Key: name
-            Body: obj.sceneData
+            Key: jsonKey
             (error, data) ->
-                return cb error if error
-                cb error, obj
+
+                if not error
+                    console.log "Scene data already uploaded as #{jsonKey}"
+                    cb error, obj
+
+                else if error.code == 'NotFound'
+                    console.log "Uploading scene data, #{obj.sceneData.length} bytes, as #{jsonKey}" 
+                    s3.putObject
+                        Bucket: kBucketName
+                        ContentType: 'application/json'
+                        Key: jsonKey
+                        Body: obj.sceneData
+                        (error, data) ->
+                            return cb error if error
+                            cb error, obj
+
+                else
+                    cb error
 
         # Prepare work items
 
@@ -105,10 +133,10 @@ async.waterfall [
             Id: 'item-' + i
             MessageBody: JSON.stringify
                 SceneBucket: kBucketName
-                SceneKey: obj.key + '.json.gz'
+                SceneKey: jsonKey
                 SceneIndex: i
                 OutputBucket: kBucketName
-                OutputKey: obj.key + '-' + pad(i, 4) + '.png'
+                OutputKey: key + '-' + pad(i, 4) + '.png'
                 OutputQueueUrl: obj.resultQueue.QueueUrl
 
     # Enqueue work items
