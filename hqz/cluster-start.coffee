@@ -7,6 +7,7 @@
 #      AWS_ACCESS_KEY_ID
 #      AWS_SECRET_ACCESS_KEY
 #      AWS_REGION
+#      HQZ_BUCKET
 #
 #   Required Node modules:
 #
@@ -46,6 +47,8 @@ kRoleName       = 'hqz-node'
 kSpotPrice      = "0.25"            # Maximum price per instance-hour
 kImageId        = "ami-2efa9d47"    # Ubuntu 12.04 LTS, x64, us-east-1
 kInstanceType   = "c1.xlarge"       # High-CPU instance
+
+kBucketName = process.env.HQZ_BUCKET
 
 kInstanceTags   = [ {
     Key: "com.zenphoton.hqz"
@@ -101,9 +104,9 @@ assumeRolePolicy =
 policyDocument =
     Statement: [
         {
-            Action: [ "s3:GetObject", "s3:PutObject" ]
+            Action: [ "s3:*" ]
             Effect: "Allow"
-            Resource: [ "arn:aws:s3:::hqz/*" ]
+            Resource: [ "arn:aws:s3:::#{kBucketName}/*" ]
         }, {
             Action: [
                 "sqs:ChangeMessageVisibility"
@@ -121,31 +124,38 @@ async.waterfall [
 
     # Create a security role for our new instances, if it doesn't already exist
     (cb) ->
-        log "Setting up security role"
+        log "Setting up security role with S3 bucket #{kBucketName}"
         iam.createRole
             RoleName: kRoleName
             AssumeRolePolicyDocument: JSON.stringify assumeRolePolicy
             (error, data) ->
                 return cb null, {} if error and error.code == 'EntityAlreadyExists'
-                return cb error if error
-
-                iam.putRolePolicy
-                    RoleName: kRoleName
-                    PolicyName: "#{kRoleName}-policy"
-                    PolicyDocument: JSON.stringify policyDocument
-                    cb
+                cb error, data
 
     (data, cb) ->
+        log "Setting up role policy"
+        iam.putRolePolicy
+            RoleName: kRoleName
+            PolicyName: "#{kRoleName}-policy"
+            PolicyDocument: JSON.stringify policyDocument
+            cb
+
+    (data, cb) ->
+        log "Creating instance profile"
         iam.createInstanceProfile
             InstanceProfileName: "#{kRoleName}-instance"
             (error, data) ->
                 return cb null, {} if error and error.code == 'EntityAlreadyExists'
-                return cb error if error
+                cb error, data
 
-                iam.addRoleToInstanceProfile
-                    InstanceProfileName: "#{kRoleName}-instance"
-                    RoleName: kRoleName
-                    cb
+    (data, cb) ->
+        log "Adding role to instance profile"
+        iam.addRoleToInstanceProfile
+            InstanceProfileName: "#{kRoleName}-instance"
+            RoleName: kRoleName
+            (error, data) ->
+                return cb null, {} if error and error.code == 'LimitExceeded'
+                cb error, data
 
     # Request spot instances
     (data, cb) -> 
