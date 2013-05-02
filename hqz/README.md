@@ -5,7 +5,16 @@ A batch renderer in the style of Zen photon garden.
 
 High Quality Zen (`hqz`) is a command line tool which converts a JSON scene description into a rendered PNG image. Rays are traced in 2D, just like on [zenphoton.com](http://zenphoton.com). But freed from the constraints of interactivity and HTML5, `hqz` can focus on creating high quality renderings for print and animation.
 
-Artwork from [zenphoton.com](http://zenphoton.com) may be converted to JSON using an included zen2json script. This can be used to render print-quality versions of existing images, or as a starting point for experimenting with the other capabilities of `hqz`.
+Artwork from [zenphoton.com](http://zenphoton.com) may be converted to JSON using an included `zen2json.coffee` script. This can be used to render print-quality versions of existing images, or as a starting point for experimenting with the other capabilities of `hqz`.
+
+In `hqz` we extend the [zenphoton.com](http://zenphoton.com) scene model with many new features:
+
+* Multiple light sources!
+* Control over light source shape, angle, and **color**.
+* Gamma correction and a 192-bit per pixel sample buffer for very high dynamic range. 
+* Generic random variable system, for adding extra randomness anywhere.
+* Rendering animations on the cloud with Amazon EC2.
+* Extensible architecture, easy to use for generative animation.
 
 
 Build for Local Rendering
@@ -21,6 +30,18 @@ You can build it by just running `make` on the command line. This should work on
 	$ ./hqz example.json example.png
 	$ open example.png
 	
+
+Node.js
+-------
+
+To use the cluster rendering features or the `zen2json` converter, you'll need [Node.js](http://nodejs.org). These scripts are written in [CoffeeScript](http://coffeescript.org) which is a pretty neat language that I hope you won't mind installing.
+
+Once you have Node.js, you can use its [npm](https://npmjs.org/) package manager to install the other dependencies:
+
+	npm install aws-sdk coffee-script async
+	
+Now the scripts mentioned below should have everything they need.
+
 
 Cloud Rendering
 ---------------
