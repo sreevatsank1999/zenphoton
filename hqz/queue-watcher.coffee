@@ -42,6 +42,17 @@ fileLog = (msg) ->
     out = fs.createWriteStream outputFile, {flags: 'a'}
     out.end msg + '\n'
 
+pad = (str, length) ->
+    str = '' + str
+    str = '0' + str while str.length < length
+    return str
+
+msgDuration = (msg) ->
+    millis = new Date(msg.FinishTime) - new Date(msg.StartedTime)
+    sec = (millis / 1000) | 0
+    mins = (sec / 60) | 0
+    hours = (mins / 60) | 0
+    return hours + ':' + pad(mins % 60, 2) + ':' + pad(sec % 60, 2) + '.' + pad(millis % 1000, 3)
 
 class Watcher
     constructor: ->
@@ -125,7 +136,11 @@ class Watcher
                 when 'failed' then '!'
                 else ' '
 
-        log "[#{ summary.join '' }] -- #{msg.SceneKey} [#{index}] #{msg.State}"
+        extra = switch msg.State
+            when 'finished' then " in #{ msgDuration msg }"
+            else ''
+
+        log "[#{ summary.join '' }] -- #{msg.SceneKey} [#{index}] #{msg.State}#{extra}"
         cb()
 
 
