@@ -6,7 +6,7 @@
 # http://creativecommons.org/licenses/by-sa/3.0/
 #
 
-RAYS = 100000
+RAYS = 4000000
 
 arc4rand = require 'arc4rand'
 
@@ -75,7 +75,7 @@ zoomViewport = (width, height, focusX, focusY, zoom) ->
 
 frames = for frame in [0 .. 255]
 
-    resolution: [960, 540]
+    resolution: [1920, 1080]
     rays: RAYS
     exposure: 0.65
 
