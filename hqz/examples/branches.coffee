@@ -6,30 +6,35 @@
 # http://creativecommons.org/licenses/by-sa/3.0/
 #
 
+RAYS = 100000
+
+arc4rand = require 'arc4rand'
+
 TAU = Math.PI * 2
+deg = (degrees) -> degrees * TAU / 360
 
-drawBranches = (frame, x0, y0, dx, dy) ->
+childBranch = (frame, seed, x0, y0, dx, dy, offset, angle, len) ->
+    cx = len * Math.cos angle
+    cy = len * Math.sin angle
+    drawBranches frame, seed, x0 + dx * offset, y0 + dy * offset, cx, cy
+
+drawBranches = (frame, seed, x0, y0, dx, dy) ->
+    rnd = (new arc4rand(seed)).random
     len = Math.sqrt(dx * dx + dy * dy)
-    return [] if len < 10
-
     angle = Math.atan2(dy, dx)
+
+    # Detail limit
+    return [] if len < 12
+
+    # Gently waving trees
     angle += 0.02 * Math.sin(frame * TAU / 100.0)
 
-    # Branching distance, angle delta, scale
-
-    d1 = 0.7
-    a1 = -29 * TAU / 360
-    s1 = 0.7
-
-    d2 = 0.7
-    a2 = 32 * TAU / 360
-    s2 = 0.7
-
+    # Different but stable random characteristics for each branch
     return [
         [0, x0, y0, dx, dy]
     ].concat(
-        drawBranches frame, x0 + dx * d1, y0 + dy * d1, len * s1 * Math.cos(angle + a1), len * s1 * Math.sin(angle + a1)
-        drawBranches frame, x0 + dx * d2, y0 + dy * d2, len * s2 * Math.cos(angle + a2), len * s2 * Math.sin(angle + a2)
+        childBranch frame, seed+'a', x0,y0,dx,dy, rnd(0.5, 0.8), angle + deg(rnd(-10,10) - 30), len * rnd(0.6, 0.7)
+        childBranch frame, seed+'b', x0,y0,dx,dy, rnd(0.5, 0.8), angle + deg(rnd(-10,10) + 30), len * rnd(0.6, 0.7)
     )
 
 floor = [0, -100, 900, 2200, -50]
@@ -37,13 +42,15 @@ floor = [0, -100, 900, 2200, -50]
 floorY = (floorX) ->
     floor[4] / floor[3] * (floorX - floor[1]) + floor[2]
 
-drawTree = (frame, x, dx, dy) ->
-    drawBranches frame, x, floorY(x), dx, dy
+drawTree = (frame, seed, x, dx, dy) ->
+    drawBranches frame, seed, x, floorY(x), dx, dy
+
+monoLight = (frame) ->
+    [ 0.08, [800, 2000], -100, 0, 0, [90, 180], 0 ]
 
 sunlight = (frame) ->
-    angle = frame * 0.3
-    x  = 2000 + frame * 0.8
-    [ 1, x, -20, 0, 0, [angle + 90, angle + 180], [5000, 'K'] ]
+    x  = 2000 - frame * 0.8
+    [ 0.2, x, -20, 0, 0, [90, 180], [5000, 'K'] ]
 
 skylight = (frame) ->
     angle = 90
@@ -66,31 +73,32 @@ zoomViewport = (width, height, focusX, focusY, zoom) ->
 
     [ left, top, right - left, bottom - top ]
 
-frames = for frame in [0 .. 119]
+frames = for frame in [0 .. 255]
 
     resolution: [960, 540]
-    rays: 1000000
+    rays: RAYS
     exposure: 0.65
 
-    viewport: zoomViewport 1920, 1080, 324, 178, frame * 0.005 
-    seed: frame * 100
+    viewport: zoomViewport 1920, 1080, 324, 178, frame * 0.0003
+    seed: frame * RAYS / 50
 
     lights: [
+        monoLight frame
         sunlight frame
         skylight frame
     ]
 
     materials: [
         [ [0.9, "d"], [0.1, "r"] ]                  # 0. Floor
-        [ [0.4, "t"], [0.4, "d"], [0.1, "r"] ]      # 1. Branches
+        [ [0.2, "t"], [0.4, "d"], [0.1, "r"] ]      # 1. Branches
     ]
 
     objects: [
         floor
     ].concat(
-        drawTree frame, 500, -30, -300
-        drawTree frame, 900, 5, -100 
-        drawTree frame, 1300, 12, -180 
+        drawTree frame, '1', 500, -30, -300
+        drawTree frame, '2', 900, 5, -100 
+        drawTree frame, '3', 1300, 12, -180 
     )
 
 console.log JSON.stringify frames
