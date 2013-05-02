@@ -173,10 +173,9 @@ class MessageHandler
 
             (data, cb) =>
                 # Cache the downloaded scene
-                sceneMemo =
-                    Bucket: @msg.SceneBucket
-                    Key: @msg.SceneKey
-                    Cache: data
+                sceneMemo.Bucket = @msg.SceneBucket
+                sceneMemo.Key = @msg.SceneKey
+                sceneMemo.Cache = data
 
                 # Decompress the scene
                 zlib.gunzip data.Body, cb
