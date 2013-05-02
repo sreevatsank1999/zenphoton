@@ -13,7 +13,7 @@ drawBranches = (frame, x0, y0, dx, dy) ->
     return [] if len < 10
 
     angle = Math.atan2(dy, dx)
-    angle += 0.01 * Math.sin(frame * TAU / 100.0)
+    angle += 0.02 * Math.sin(frame * TAU / 100.0)
 
     # Branching distance, angle delta, scale
 
@@ -42,7 +42,8 @@ drawTree = (frame, x, dx, dy) ->
 
 sunlight = (frame) ->
     angle = frame * 0.3
-    [ 1, 2000, -20, 0, 0, [angle + 90, angle + 180], [5000, 'K'] ]
+    x  = 2000 + frame * 0.8
+    [ 1, x, -20, 0, 0, [angle + 90, angle + 180], [5000, 'K'] ]
 
 skylight = (frame) ->
     angle = 90
@@ -65,14 +66,14 @@ zoomViewport = (width, height, focusX, focusY, zoom) ->
 
     [ left, top, right - left, bottom - top ]
 
-frames = for frame in [0 .. 59]
+frames = for frame in [0 .. 119]
 
     resolution: [960, 540]
     rays: 1000000
     exposure: 0.65
 
     viewport: zoomViewport 1920, 1080, 324, 178, frame * 0.005 
-    seed: frame * 10
+    seed: frame * 100
 
     lights: [
         sunlight frame
