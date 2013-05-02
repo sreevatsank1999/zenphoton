@@ -71,16 +71,38 @@ kJobKey = process.argv[2]
 # Files on the EC2 instance
 kLogFile = "/tmp/encode.log"
 kVideoFile = "/tmp/video.mp4"
-
-s3path = "s3://#{kBucketName}/#{kJobKey}"
+kS3PutFile = "/tmp/s3put.js"
 
 # Snapshot log to avoid MD5 mismatch errors
 updateLog = "cp #{kLogFile} #{kLogFile}-snapshot &&
-    s3cmd put --acl-public --mime-type text/plain #{kLogFile}-snapshot #{s3path}.log"
+    node #{kS3PutFile} #{kLogFile}-snapshot #{kBucketName} text/plain #{kJobKey}.log"
 
 # Encode with libavcodec and libx264
 encodeCommand = "avconv -y -r 30 -i http://#{kBucketName}.s3.amazonaws.com/#{kJobKey}-%04d.png
     -c:v libx264 -preset slow -crf 18 -pix_fmt yuv420p #{kVideoFile}"
+
+# Very tiny node.js S3 uploader. This is preferable to s3cmd, since the node.js aws-sdk
+# knows how to retrieve IAM credentials over the metadata socket automatically.
+s3put = "
+    aws = require('aws-sdk');
+    s3 = new aws.S3({ apiVersion: '2006-03-01' }).client;
+
+    cb = function (e) { if (e) {
+        console.log(JSON.stringify(e));
+        process.exit(1);
+    }};
+
+    require('fs').readFile( process.argv[2], function (error, data) {
+        cb(error);
+        s3.putObject({
+            Bucket: process.argv[3],
+            ContentType: process.argv[4],
+            Key: process.argv[5],
+            ACL: 'public-read',
+            Body: data
+        }, cb);
+    });
+    "
 
 script = """
     #!/bin/sh
@@ -89,7 +111,13 @@ script = """
     echo deb http://us-east-1.ec2.archive.ubuntu.com/ubuntu/ precise-updates multiverse >> /etc/apt/sources.list
 
     apt-get update
-    apt-get install -y libavcodec-extra-53 libav-tools s3cmd
+    apt-get install -y libavcodec-extra-53 libav-tools nodejs npm
+    npm install -g aws-sdk
+
+    ln -s /usr/bin/nodejs /usr/bin/node
+    export NODE_PATH=/usr/local/lib/node_modules
+    export AWS_REGION=#{ AWS.config.region }
+    echo "#{s3put}" > #{kS3PutFile}
 
     echo [`date`] Starting encode job #{kJobKey} > #{kLogFile}
     echo >> #{kLogFile}
@@ -108,7 +136,7 @@ script = """
     echo [`date`] Encode finished, uploading >> #{kLogFile}
     #{updateLog}
 
-    s3cmd put --mime-type video/mp4 #{kVideoFile} #{s3path}.log >> #{kLogFile}
+    node #{kS3PutFile} #{kVideoFile} #{kBucketName} video/mp4 #{kJobKey}.mp4 >> 2>&1 #{kLogFile}
 
     echo >> #{kLogFile}
     echo [`date`] Upload finished, done. >> #{kLogFile}
