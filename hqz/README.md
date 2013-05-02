@@ -8,18 +8,70 @@ High Quality Zen (`hqz`) is a command line tool which converts a JSON scene desc
 Artwork from [zenphoton.com](http://zenphoton.com) may be converted to JSON using an included zen2json script. This can be used to render print-quality versions of existing images, or as a starting point for experimenting with the other capabilities of `hqz`.
 
 
-Build
------
+Build for Local Rendering
+-------------------------
 
-Batteries included: `hqz` has no external dependencies aside from the C++ standard library.
+If you want to run `hqz` on your own computer, you'll need to compile it from C++ source first. Fortunately, you won't need any dependencies other than a C++ compiler and the standard library.
 
-On Mac OS X, an XCode project file is included. For other platforms, there's a generic Makefile:
+You can build it by just running `make` on the command line. This should work on Mac OS X and Linux. Not tested on Windows, but maybe it will work anyway!
 
 	$ make
 	cc -c -o src/zrender.o src/zrender.cpp -Isrc -Wall -Werror -g -O3 -ffast-math -fno-exceptions
 	…
 	$ ./hqz example.json example.png
 	$ open example.png
+	
+
+Cloud Rendering
+---------------
+
+It's very CPU-intensive to render animations with `hqz`, so we include scripts to run a cluster of rendering nodes on the cloud, using Amazon EC2.
+
+* **Warning:** This is all really experimental, and incorrect configurations could result in a large bill from AWS at the end of the month. Use these scripts at your own risk, and only if you know EC2, S3, and SQS well enough to fix things when they break :)
+
+### Animation Format
+
+Animations are represented as JSON files with an array of scene objects, one per frame. Each scene object is processed independently by a different instance of `hqz`.
+
+There is an example animation `examples/branches.coffee`. This is a script which programmatically animates a scene, and writes the resulting JSON array object to stdout.
+
+### Environment
+
+These scripts rely on a handful of environment variables:
+
+* `AWS_ACCESS_KEY_ID` – Your AWS access key. Must have permissions for EC2, S3, and SQS.
+* `AWS_SECRET_ACCESS_KEY` – The secret corresponding with your AWS access key. 
+* `AWS_REGION` – AWS service region. Go where compute is cheapest if you can. (us-east-1)
+* `HQZ_BUCKET` – S3 bucket to use for storage in `queue-submit`. Must exist and be owned by you.
+
+### Work Queue
+
+The included scripts use Amazon's Simple Queue Service to distribute workloads to huge numbers of unreliable rendering nodes. The `queue-runner.coffee` script runs on each rendering node. It retrieves work items from SQS, downloads scene data from S3, renders the scene, uploads the image file to S3, then finally dequeues the work item and sends a completion notification. If the render nodes crash or are disconnected during rendering, the work item will time out and another node will get a chance to collect it.
+
+The `queue-submit.coffee` script submits a new JSON frame array to the cluster. It uploads the scene data and posts work items for each frame. `queue-watcher.coffee` downloads status and completion messages from the cluster, storing them locally in `queue-watcher.log` as well as decoding them to the console as they become available. If you kill and restart `queue-watcher` it will pick up where it left off by replaying `queue-watcher.log` on startup.
+
+The `queue-*` scripts can all be used with or without an EC2 cluster. If you have many idle computers available to you, you can run a `queue-runner` on each, and use AWS only for SQS and S3. This will be very cheap.
+
+### Compute Cluster
+
+If you don't have your own computing cluster, you can rent one inexpensively from Amazon using Spot Instances. This is a way to bid on surplus datacenter capacity, getting prices that are a fraction of the standard price on the condition that your virtual machines can be terminated at any time without notice. As of May 2013, Spot prices for the 8-core virtual machines we use are about 7 cents per hour. This scales linearly. You can rent 20 of these VMs for $1.40/hour, and render 160 frames in parallel.
+
+* **Warning:** You pay for the time your instances are powered on, not just the time they spend rendering frames.
+
+The command `cluster-start.coffee <N>` spawns N cluster nodes. Each one will render up to 8 frames simultaneously. Larger clusters will finish your animation faster, but watch out for unused capacity near the end of the job. You can add and remove nodes during a job without any problem. Start additional nodes by running `cluster-start` again, or stop **all** nodes by running `cluster-stop.coffee`. If you need to stop individual nodes, use the EC2 management console.
+
+Note that `cluster-start` configures the cluster nodes using a shell script supplied via EC2 userdata. The cluster nodes have no permanent storage. On boot, they use `apt-get` and `npm` to install prerequisites, then they download the source for `hqz` from GitHub, compile it, and finally start `queue-runner` in an infinite loop. You can check on the status of these cluster nodes using `cluster-status.coffee`. The optional `-v` flag will also display the system console output from all running nodes.
+
+### Video Encoding
+
+After your render completes, you'll be left with a directory in your S3 bucket full of `.png` files, one for each frame. Unless you have a really fast internet connection, you probably don't want to download all of these files.
+
+* **Warning:** In fact, now seems like a good time to mention that you probably don't want to store all of these files for that long either. S3 charges by the gigabyte-month, and the data transfer fees are higher for moving data out to the internet vs. sending it to EC2. So, the most cost-effective way to deal with all of this data is to compress it on EC2 then delete the originals.
+
+ The `cluster-encode.coffee <job>/<hash>` command creates a fire-and-forget video encoder VM. The command line option is a concatenation of the job name (basename of the file you gave to `cluster-submit`) and a hash of the scene data. You will see this identifier all over the logs from `queue-watcher` as well as in the filenames in your S3 bucket.
+ 
+This command creates a small Spot Instance with a single virtual CPU. Encoding is I/O limited for us, so this VM doesn't need to be especially beefy. It streams the frames directly from S3, compresses a high-quality h264 video suitable as source material for editing or transcoding, then it uploads the resulting video back to S3. It periodically reports progress by uploading a log file to S3. Upon running the script, you'll be given URLs to the log file and to the location where the final video will be stored.
+
 
 Scene Format
 ------------
