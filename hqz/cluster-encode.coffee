@@ -77,6 +77,9 @@ kS3PutFile = "/tmp/s3put.js"
 updateLog = "cp #{kLogFile} #{kLogFile}-snapshot &&
     node #{kS3PutFile} #{kLogFile}-snapshot #{kBucketName} text/plain #{kJobKey}.log"
 
+# Redirection command to send output to our log
+logRedirect = ">> #{kLogFile} 2>&1"
+
 # Encode with libavcodec and libx264
 encodeCommand = "avconv -y -r 30 -i http://#{kBucketName}.s3.amazonaws.com/#{kJobKey}-%04d.png
     -c:v libx264 -preset slow -crf 18 -pix_fmt yuv420p #{kVideoFile}"
@@ -119,11 +122,11 @@ script = """
     export AWS_REGION=#{ AWS.config.region }
     echo "#{s3put}" > #{kS3PutFile}
 
-    echo [`date`] Starting encode job #{kJobKey} > #{kLogFile}
-    echo >> #{kLogFile}
+    echo [`date`] Starting encode job #{kJobKey} #{logRedirect}
+    echo #{logRedirect}
     #{updateLog}
 
-    #{encodeCommand} >> #{kLogFile} 2>&1 &
+    #{encodeCommand} #{logRedirect} &
 
     # Periodically upload log as long as the encoder is running
     sleep 5
@@ -132,14 +135,14 @@ script = """
         sleep 5
     done
 
-    echo >> #{kLogFile}
-    echo [`date`] Encode finished, uploading >> #{kLogFile}
+    echo #{logRedirect}
+    echo [`date`] Encode finished, uploading #{logRedirect}
     #{updateLog}
 
-    node #{kS3PutFile} #{kVideoFile} #{kBucketName} video/mp4 #{kJobKey}.mp4 >> 2>&1 #{kLogFile}
+    node #{kS3PutFile} #{kVideoFile} #{kBucketName} video/mp4 #{kJobKey}.mp4 #{logRedirect}
 
-    echo >> #{kLogFile}
-    echo [`date`] Upload finished, done. >> #{kLogFile}
+    echo #{logRedirect}
+    echo [`date`] Upload finished, done. #{logRedirect}
     #{updateLog}
 
     poweroff
