@@ -6,7 +6,7 @@
 # http://creativecommons.org/licenses/by-sa/3.0/
 #
 
-RAYS = 4000000
+RAYS = 10000000
 
 arc4rand = require 'arc4rand'
 
