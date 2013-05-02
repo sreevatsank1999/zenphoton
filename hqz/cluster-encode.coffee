@@ -68,49 +68,51 @@ if process.argv.length != 3
     process.exit 1
 kJobKey = process.argv[2]
 
-script = """
-    #!/bin/bash
+# Files on the EC2 instance
+kLogFile = "/tmp/encode.log"
+kVideoFile = "/tmp/video.mp4"
 
-    # Needed for libavcodec-extra-53, which has libx264 in it.
+s3path = "s3://#{kBucketName}/#{kJobKey}"
+
+# Snapshot log to avoid MD5 mismatch errors
+updateLog = "cp #{kLogFile} #{kLogFile}-snapshot &&
+    s3cmd put --acl-public --mime-type text/plain #{kLogFile}-snapshot #{s3path}.log"
+
+# Encode with libavcodec and libx264
+encodeCommand = "avconv -y -r 30 -i http://#{kBucketName}.s3.amazonaws.com/#{kJobKey}-%04d.png
+    -c:v libx264 -preset slow -crf 18 -pix_fmt yuv420p #{kVideoFile}"
+
+script = """
+    #!/bin/sh
+
     echo deb http://us-east-1.ec2.archive.ubuntu.com/ubuntu/ precise multiverse >> /etc/apt/sources.list
     echo deb http://us-east-1.ec2.archive.ubuntu.com/ubuntu/ precise-updates multiverse >> /etc/apt/sources.list
 
     apt-get update
     apt-get install -y libavcodec-extra-53 libav-tools s3cmd
 
-    export BUCKET=#{kBucketName}
-    export KEY=#{kJobKey}
+    echo [`date`] Starting encode job #{kJobKey} > #{kLogFile}
+    echo >> #{kLogFile}
+    #{updateLog}
 
-    export LOG=/tmp/encode.log
-    export VIDEO=/tmp/video.mp4
-
-    # Snapshot log to avoid MD5 mismatch errors
-    alias update_log="cp $LOG $LOG-snapshot && s3cmd put --acl-public --mime-type text/plain $LOG-snapshot s3://$BUCKET/$KEY.log"
-
-    echo [`date`] Starting encode job $KEY > $LOG
-    echo >> $LOG
-    update_log
-
-    # Start encoding in the background
-    avconv -y -r 30 -i http://$BUCKET.s3.amazonaws.com/$KEY-%04d.png \
-        -c:v libx264 -preset slow -crf 18 -pix_fmt yuv420p $VIDEO >> $LOG 2>&1 &
+    #{encodeCommand} >> #{kLogFile} 2>&1 &
 
     # Periodically upload log as long as the encoder is running
     sleep 5
     while pidof avconv > /dev/null; do
-        update_log
+        #{updateLog}
         sleep 5
     done
 
-    echo >> $LOG
-    echo [`date`] Encode finished, uploading >> $LOG
-    update_log
+    echo >> #{kLogFile}
+    echo [`date`] Encode finished, uploading >> #{kLogFile}
+    #{updateLog}
 
-    s3cmd put --mime-type video/mp4 $VIDEO s3://$BUCKET/$KEY.mp4 >> $LOG
+    s3cmd put --mime-type video/mp4 #{kVideoFile} #{s3path}.log >> #{kLogFile}
 
-    echo >> $LOG
-    echo [`date`] Upload finished, done. >> $LOG
-    update_log
+    echo >> #{kLogFile}
+    echo [`date`] Upload finished, done. >> #{kLogFile}
+    #{updateLog}
 
     poweroff
     """
