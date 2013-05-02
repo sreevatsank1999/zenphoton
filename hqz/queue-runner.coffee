@@ -160,7 +160,7 @@ class MessageHandler
                 # XXX: We may still download the same file multiple times concurrently
                 #      if a new job comes in while the file is still downloading.
 
-                if sceneMemo.Bucket == @msg.SceneBucket and sceneMemo.Key = @msg.SceneKey
+                if sceneMemo.Bucket == @msg.SceneBucket and sceneMemo.Key == @msg.SceneKey
                     log "Using cached copy of #{@msg.SceneKey}"
                     cb null, sceneMemo.Cache
 
