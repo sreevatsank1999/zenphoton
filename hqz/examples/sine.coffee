@@ -70,4 +70,4 @@ frames = for frame in [0 .. 599]
         drawSine frame, '1', -100, 500, 2500, 500
     )
 
-console.log JSON.stringify frames[0]
+console.log JSON.stringify frames
