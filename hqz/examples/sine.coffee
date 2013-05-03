@@ -6,7 +6,7 @@
 # http://creativecommons.org/licenses/by-sa/3.0/
 #
 
-RAYS = 100000
+RAYS = 10000000
 
 TAU = Math.PI * 2
 deg = (degrees) -> degrees * TAU / 360
