@@ -23,9 +23,9 @@ module.exports = function (options, func)
     var results = [];
     var material = options.material || 0;
     var resolution = options.resolution || 4.0;
-    var step = options.step || 0.00001;
+    var step = options.step || 0.000001;
     var t = 0;
-    var xp, yp, nxp, nyp;
+    var xp, yp, ap;
 
     do {
 
@@ -37,25 +37,19 @@ module.exports = function (options, func)
         var dx = (xy1[0]- xy0[0]) / step;
         var dy = (xy1[1] - xy0[1]) / step;
 
-        // Length of derivative vector
+        // Length and angle of normal vector
         var dl = Math.sqrt(dx*dx + dy*dy);
-
-        // Perpendicular normal vector at this point
-        var nx = -dy / dl;
-        var ny = dx / dl;
+        var da = Math.atan2(dx, -dy) * (180.0 / Math.PI);
 
         // If we have at least two points, add a segment
         if (xp != undefined) {
-            results.push([ material,
-                xp, yp, xy0[0]-xp, xy0[1]-yp,
-                nxp, nyp, nx-nxp, ny-nyp ]);
+            results.push([ material, xp, yp, ap, xy0[0]-xp, xy0[1]-yp, da-ap ]);
         }
 
         // Save "previous" values for the next point
         xp = xy0[0];
         yp = xy0[1];
-        nxp = nx;
-        nyp = ny;
+        ap = da;
 
         // Estimate how far to advance 't' by using the derivative to find a step
         // that should approximate the requested resolution in scene units.

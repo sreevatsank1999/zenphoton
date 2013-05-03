@@ -67,10 +67,15 @@ struct Ray
         return result;
     }
 
-    bool intersectSegment(Vec2 s1, Vec2 sD, double &distance) const
+    bool intersectSegment(Vec2 s1, Vec2 sD, double &distance, double &alpha) const
     {
-        // Ray to Segment Intersection.
-        // On intersection, returns 'true' and sets 'distance'.
+        /*
+         * Ray to Segment Intersection.
+         * On intersection:
+         *   - returns true
+         *   - 'distance' is the distance from ray origin to intersection
+         *   - 'alpha' is in the range [0,1], and represents how far along the segment we hit.
+         */
 
         /*
          * Ray equation: [rayOrigin + rayDirection * M], 0 <= M
@@ -99,6 +104,14 @@ struct Ray
         if (m < 0.0) return false;
 
         distance = m;
+        alpha = n;
         return true;
     }
+
+    bool intersectSegment(Vec2 s1, Vec2 sD, double &distance) const
+    {
+        double alpha;
+        return intersectSegment(s1, sD, distance, alpha);
+    }
+
 };

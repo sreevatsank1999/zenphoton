@@ -357,18 +357,19 @@ bool ZRender::rayIntersectObject(IntersectionData &d, Sampler &s, const Value &o
             break;
         }
 
-        case 9: {
-            // Line segment with interpolated normals
+        case 7: {
+            // Line segment with trigonometrically interpolated normals
 
             Vec2 origin = { s.value(object[1]), s.value(object[2]) };
-            Vec2 delta = { s.value(object[3]), s.value(object[4]) };
+            Vec2 delta = { s.value(object[4]), s.value(object[5]) };
+            double alpha;
 
-            if (d.ray.intersectSegment(origin, delta, d.distance)) {
-                Vec2 normalOrigin = { s.value(object[5]), s.value(object[6]) };
-                Vec2 normalDelta = { s.value(object[7]), s.value(object[8]) };
+            if (d.ray.intersectSegment(origin, delta, d.distance, alpha)) {
+                double degrees = s.value(object[3]) + alpha * s.value(object[6]);
+                double radians = degrees * (M_PI / 180.0);
                 d.point = d.ray.pointAtDistance(d.distance);
-                d.normal.x = normalOrigin.x + normalDelta.x * d.distance;
-                d.normal.y = normalOrigin.y + normalDelta.y * d.distance;
+                d.normal.x = cos(radians);
+                d.normal.y = sin(radians);
                 return true;
             }
             break;

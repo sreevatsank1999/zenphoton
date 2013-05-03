@@ -154,11 +154,12 @@ Scene objects are things that interact with rays once they've been emitted. Vari
 	* A line segment, extending from (x0, y0) to (x0 + dx, y0 + dy).
     * Normals are calculated automatically from the sampled position.
 	* Coordinates are all sampled.
-* [ *material*, *x0*, *y0*, *dx*, *dy*, *nx, *ny, *dnx, *dny ]
+* [ *material*, *x0*, *y0*, *a0*, *dx*, *dy*, *da* ]
 	* A line segment, extending from (x0, y0) to (x0 + dx, y0 + dy)
-    * Normal vectors are explicit. Vectors of unit length should be used. They will be linearly interpolated then re-normalized.
-    * Normal at (x0, y0) is (nx, ny)
-    * Normal at (x0 + dx, y0 + dy) is (nx + dnx, ny + dny)
+    * Normal vector angles are linearly interpolated.
+    * Normal at (x0, y0) is (cos a0, sin a0).
+    * Normal at (x0 + dx, y0 + dy) is (cos(a0 + da), sin(a0 + da)).
+    * Angles are in degrees.
 	* Coordinates are all sampled.
 * Etc.
 	* Other values are reserved for future use.
