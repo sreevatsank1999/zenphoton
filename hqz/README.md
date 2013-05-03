@@ -89,7 +89,7 @@ After your render completes, you'll be left with a directory in your S3 bucket f
 
 * **Warning:** In fact, now seems like a good time to mention that you probably don't want to store all of these files for that long either. S3 charges by the gigabyte-month, and the data transfer fees are higher for moving data out to the internet vs. sending it to EC2. So, the most cost-effective way to deal with all of this data is to compress it on EC2 then delete the originals.
 
- The `cluster-encode.coffee <job>/<hash>` command creates a fire-and-forget video encoder VM. The command line option is a concatenation of the job name (basename of the file you gave to `cluster-submit`) and a hash of the scene data. You will see this identifier all over the logs from `queue-watcher` as well as in the filenames in your S3 bucket.
+The `cluster-encode.coffee <job>/<hash>` command creates a fire-and-forget video encoder VM. The command line option is a concatenation of the job name (basename of the file you gave to `cluster-submit`) and a hash of the scene data. You will see this identifier all over the logs from `queue-watcher` as well as in the filenames in your S3 bucket.
  
 This command creates a small Spot Instance with a single virtual CPU. Encoding is I/O limited for us, so this VM doesn't need to be especially beefy. It streams the frames directly from S3, compresses a high-quality h264 video suitable as source material for editing or transcoding, then it uploads the resulting video back to S3. It periodically reports progress by uploading a log file to S3. Upon running the script, you'll be given URLs to the log file and to the location where the final video will be stored.
 
