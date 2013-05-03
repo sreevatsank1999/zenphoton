@@ -340,17 +340,38 @@ bool ZRender::rayIntersectObject(IntersectionData &d, Sampler &s, const Value &o
      * Does not write to d.object; it is assumed that the caller does this.
      */
 
-    if (object.Size() == 5) {
-        // Line segment
+    switch (object.Size()) {
 
-        Vec2 origin = { s.value(object[1]), s.value(object[2]) };
-        Vec2 delta = { s.value(object[3]), s.value(object[4]) };
+        case 5: {
+            // Line segment
 
-        if (d.ray.intersectSegment(origin, delta, d.distance)) {
-            d.point = d.ray.pointAtDistance(d.distance);
-            d.normal.x = -delta.y;
-            d.normal.y = delta.x;
-            return true;
+            Vec2 origin = { s.value(object[1]), s.value(object[2]) };
+            Vec2 delta = { s.value(object[3]), s.value(object[4]) };
+
+            if (d.ray.intersectSegment(origin, delta, d.distance)) {
+                d.point = d.ray.pointAtDistance(d.distance);
+                d.normal.x = -delta.y;
+                d.normal.y = delta.x;
+                return true;
+            }
+            break;
+        }
+
+        case 9: {
+            // Line segment with interpolated normals
+
+            Vec2 origin = { s.value(object[1]), s.value(object[2]) };
+            Vec2 delta = { s.value(object[3]), s.value(object[4]) };
+
+            if (d.ray.intersectSegment(origin, delta, d.distance)) {
+                Vec2 normalOrigin = { s.value(object[5]), s.value(object[6]) };
+                Vec2 normalDelta = { s.value(object[7]), s.value(object[8]) };
+                d.point = d.ray.pointAtDistance(d.distance);
+                d.normal.x = normalOrigin.x + normalDelta.x * d.distance;
+                d.normal.y = normalOrigin.y + normalDelta.y * d.distance;
+                return true;
+            }
+            break;
         }
     }
 

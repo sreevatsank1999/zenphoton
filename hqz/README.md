@@ -151,7 +151,15 @@ A light is a thing that can emit rays. Lights are each described as an array of 
 Scene objects are things that interact with rays once they've been emitted. Various kinds of objects are supported:
 
 * [ *material*, *x0*, *y0*, *dx*, *dy* ]
-	* A line segment, extending from (x0, y0) to (x0 + dx, y0 + dy). Coordinates are all sampled.
+	* A line segment, extending from (x0, y0) to (x0 + dx, y0 + dy).
+    * Normals are calculated automatically from the sampled position.
+	* Coordinates are all sampled.
+* [ *material*, *x0*, *y0*, *dx*, *dy*, *nx, *ny, *dnx, *dny ]
+	* A line segment, extending from (x0, y0) to (x0 + dx, y0 + dy)
+    * Normal vectors are explicit. Vectors of unit length should be used. They will be linearly interpolated then re-normalized.
+    * Normal at (x0, y0) is (nx, ny)
+    * Normal at (x0 + dx, y0 + dy) is (nx + dnx, ny + dny)
+	* Coordinates are all sampled.
 * Etc.
 	* Other values are reserved for future use.
 
