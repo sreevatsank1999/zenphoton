@@ -57,6 +57,9 @@ msgDuration = (msg) ->
 class Watcher
     constructor: ->
         @jobs = {}
+        @polling = 0
+        @pendingDeletions = []
+        @ident = 0
 
     replaySync: (filename, cb) ->
         try
@@ -85,6 +88,20 @@ class Watcher
                     @pollQueue()
 
     pollQueue: ->
+        # Handle any pending message deletions at the same rate as our queue polling.
+        if @pendingDeletions.length > 0
+            batchSize = Math.min 10, @pendingDeletions.length
+            batch = @pendingDeletions.slice 0, batchSize
+            @pendingDeletions = @pendingDeletions.slice batchSize
+            sqs.deleteMessageBatch
+                QueueUrl: @queue
+                Entries: batch
+                (error, data) =>
+                    if error
+                        log error
+                        @pendingDeletions = @pendingDeletions.concat batch
+
+        @polling += 1
         sqs.receiveMessage
             QueueUrl: @queue
             MaxNumberOfMessages: 10
@@ -92,6 +109,7 @@ class Watcher
             WaitTimeSeconds: 10
 
             (error, data) =>
+                @polling -= 1
                 return log error if error
                 if data and data.Messages
                     for m in data.Messages
@@ -103,13 +121,18 @@ class Watcher
                                 cb error
                 @pollQueue()
 
+    nextID: () ->
+        @ident += 1
+        return '' + @ident
+
     messageComplete: (error, m) ->
         return log "Error processing message: " + util.inspect error if error
-        sqs.deleteMessage
-            QueueUrl: @queue
-            ReceiptHandle: m.ReceiptHandle
-            (error, data) =>
-                @pollQueue()
+
+        @pendingDeletions.push
+            Id: @nextID()
+            ReceiptHandle: m.ReceiptHandle            
+
+        @pollQueue() if not @polling
 
     logAndHandleMessage: (msg, cb) ->
         fileLog JSON.stringify msg
