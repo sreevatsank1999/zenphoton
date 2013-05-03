@@ -17,20 +17,24 @@ lerp = (frame, length, a, b) ->
 
 sunlight = (frame) ->
     # Warm point source
-    x = lerp frame, 600, 1920, -500
+    x = lerp frame, 600, 1920, -200
     [ 1.0, x, -20, 0, 0, [0, 180], [5000, 'K'] ]
 
 sealight = (frame) ->
     # Big diffuse light, with a blueish color
-    x = lerp frame, 600, 1920, -200
-    [ 1.0, [x-500, x+500], 1100, 0, 0, [180, 360], [10000, 'K'] ]
+    x = lerp frame, 600, 1920, -800
+    [ 0.1, [x-300, x+300], 1200, 0, 0, [180, 360], [10000, 'K'] ]
 
-sineFunc = (frame, seed, x0, y0, dx, dy) ->
+sineFunc = (frame, seed, x0, y0, w, h, angle) ->
     (t) ->
         e = lerp frame, 600, 300, 50
         u = lerp frame, 600, 20, 10
         scale = Math.pow(e, t)
-        [ x0 + dx * t, y0 + dy * Math.sin(t*(u + scale)) / (1 + scale) ]
+        x = w * t
+        y = h * Math.sin(t*(u + scale)) / (1 + scale)
+        dx = Math.cos angle
+        dy = Math.sin angle
+        [ x0 + dx*x + dy*y, y0 + dy*x - dx*y ]
 
 frames = for frame in [0 .. 599]
 
@@ -56,7 +60,7 @@ frames = for frame in [0 .. 599]
     ].concat(
         plot
             material: 0
-            sineFunc frame, '1', 50, 500, 1820, 900
+            sineFunc frame, '1', -140, 470, 3000, 900, deg 10 
     )
 
 console.log JSON.stringify frames
