@@ -4,10 +4,9 @@
 <script type='text/coffeescript'>
 
 @status = 'Drop animation JSON file here'
-
-aspect = 16/9
-margin = 10
-fps = 30
+@aspect = 16/9
+@margin = 10
+@fps = 30
 
 $('#preview')
     .bind('dragenter dragover', false)
@@ -28,8 +27,7 @@ $('#preview')
         reader.onload = (e) =>
             try
                 @fileData = JSON.parse e.target.result
-                @beginTime = new Date()
-                @status = ''
+                @fileLoaded @fileData
             catch error
                 @status = error
             @redraw()
@@ -37,12 +35,12 @@ $('#preview')
         reader.readAsText files[0] 
 
 @resize = () ->
-    @width = window.innerWidth - margin
-    @height = window.innerHeight - margin
-    if @width / @height > aspect
-        @width = @height * aspect
+    @width = window.innerWidth - @margin
+    @height = window.innerHeight - @margin
+    if @width / @height > @aspect
+        @width = @height * @aspect
     else
-        @height = @width / aspect
+        @height = @width / @aspect
 
     $('#preview').css
         width: @width
@@ -62,7 +60,7 @@ $('#preview')
 
     if @fileData and @fileData.length
         now = new Date()
-        frame = ((now - @beginTime) * fps / 1000) | 0
+        frame = ((now - @beginTime) * @fps / 1000) | 0
         if frame >= @fileData.length
             frame = 0
             @beginTime = now
@@ -73,7 +71,7 @@ $('#preview')
         @ctx.textAlign = 'left'
         @ctx.textBaseline = 'top'
         @ctx.fillStyle = '#888'
-        @ctx.fillText "Frame #{frame}, #{(frame / fps)|0} sec", 5, 5
+        @ctx.fillText "Frame #{frame}, #{(frame / @fps)|0} sec", 5, 5
 
         window.requestAnimationFrame () => @redraw()
 
@@ -88,6 +86,12 @@ $('#preview')
     # Sample a 'typical' value for the random variable 'obj'
     return (obj[0] + obj[1]) / 2 if obj.length == 2
     return obj
+
+@fileLoaded = (data) ->
+    @beginTime = new Date()
+    @status = ''
+    @aspect = sampleCenter(data[0].resolution[0]) / sampleCenter(data[0].resolution[1])
+    @resize()
 
 @transform = (scene, x, y) ->
     vx = @sampleCenter scene.viewport[0]
