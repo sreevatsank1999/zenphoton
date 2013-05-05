@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html><head><meta charset='utf-8' />
+<title>hqz preview-animation</title>
+<script type='text/coffeescript'>
+
+@status = 'Drop animation JSON file here'
+
+aspect = 16/9
+margin = 10
+fps = 30
+
+$('#preview')
+    .bind('dragenter dragover', false)
+    .bind 'drop', (e) =>
+        e.stopPropagation()
+        e.preventDefault()
+        files = e.target.files or e.originalEvent.dataTransfer.files
+
+        @fileData = null
+        @status = 'Loading...'
+        @redraw()
+
+        if files.length != 1
+            @status = 'Drop exactly one file'
+            return @redraw()
+
+        reader = new FileReader
+        reader.onload = (e) =>
+            try
+                @fileData = JSON.parse e.target.result
+                @beginTime = new Date()
+                @status = ''
+            catch error
+                @status = error
+            @redraw()
+
+        reader.readAsText files[0] 
+
+@resize = () ->
+    @width = window.innerWidth - margin
+    @height = window.innerHeight - margin
+    if @width / @height > aspect
+        @width = @height * aspect
+    else
+        @height = @width / aspect
+
+    $('#preview').css
+        width: @width
+        height: @height
+        'margin-left': -@width/2
+        'margin-top': -@height/2
+
+    @canvas = document.getElementById 'preview'
+    @canvas.width = @width
+    @canvas.height = @height
+    @ctx = @canvas.getContext '2d'
+    @redraw()
+
+@redraw = () ->
+    @ctx.fillStyle = '#111'
+    @ctx.fillRect 0, 0, @width, @height
+
+    if @fileData and @fileData.length
+        now = new Date()
+        frame = ((now - @beginTime) * fps / 1000) | 0
+        if frame >= @fileData.length
+            frame = 0
+            @beginTime = now
+
+        @drawFrame @fileData[frame]
+
+        @ctx.font = "12px sans-serif"
+        @ctx.textAlign = 'left'
+        @ctx.textBaseline = 'top'
+        @ctx.fillStyle = '#888'
+        @ctx.fillText "Frame #{frame}, #{(frame / fps)|0} sec", 5, 5
+
+        window.requestAnimationFrame () => @redraw()
+
+    if @status
+        @ctx.font = "#{@height * 0.1}px sans-serif"
+        @ctx.textAlign = 'center'
+        @ctx.textBaseline = 'middle'
+        @ctx.fillStyle = '#888'
+        @ctx.fillText @status, @width * 0.5, @height * 0.3
+
+@sampleCenter = (obj) ->
+    # Sample a 'typical' value for the random variable 'obj'
+    return (obj[0] + obj[1]) / 2 if obj.length == 2
+    return obj
+
+@transform = (scene, x, y) ->
+    vx = @sampleCenter scene.viewport[0]
+    vy = @sampleCenter scene.viewport[1]
+    vw = @sampleCenter scene.viewport[2]
+    vh = @sampleCenter scene.viewport[3]
+    [ (x - vx) / vw * @width, (y - vy) / vh * @height]
+
+@drawFrame = (scene) ->
+    @ctx.strokeStyle = '#fff'
+    @ctx.lineWidth = 0.75
+
+    for obj in scene.lights
+        x = @sampleCenter obj[1]
+        y = @sampleCenter obj[2]
+        [x, y] = @transform scene, x, y
+        @ctx.beginPath()
+        @ctx.arc x, y, 80, 0, 2 * Math.PI, false
+        @ctx.arc x, y, 100, 0, 2 * Math.PI, false
+        @ctx.stroke()
+
+    for obj in scene.objects
+        switch obj.length
+            when 5
+                # Line segment
+                x0 = @sampleCenter obj[1]
+                y0 = @sampleCenter obj[2]
+                dx = @sampleCenter obj[3]
+                dy = @sampleCenter obj[4]
+                @ctx.beginPath()
+                @ctx.moveTo.apply @ctx, @transform scene, x0, y0
+                @ctx.lineTo.apply @ctx, @transform scene, x0+dx, y0+dy
+                @ctx.stroke()
+
+            when 7
+                # Line segment with explicit normals
+                x0 = @sampleCenter obj[1]
+                y0 = @sampleCenter obj[2]
+                dx = @sampleCenter obj[4]
+                dy = @sampleCenter obj[5]
+                @ctx.strokeStyle = '#fff'
+                @ctx.lineWidth = 0.75
+                @ctx.beginPath()
+                @ctx.moveTo.apply @ctx, @transform scene, x0, y0
+                @ctx.lineTo.apply @ctx, @transform scene, x0+dx, y0+dy
+                @ctx.stroke()
+
+
+
+$(window).resize () => @resize()
+$(document).ready () => @resize()
+
+</script>
+<script type='text/javascript' src='http://ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js'></script>
+<script type='text/javascript' src='http://coffeescript.org/extras/coffee-script.js'></script>
+<style>
+
+body {
+    background: #111;
+    overflow: hidden;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+#preview {
+    display: block;
+    position: absolute;
+    border: 1px solid #444;
+    top: 50%;
+    left: 50%;
+}
+
+</style></head>
+<body><canvas id='preview'></canvas></body>
+</html>
