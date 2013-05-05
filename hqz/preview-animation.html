@@ -8,7 +8,7 @@
 @margin = 10
 @fps = 30
 
-$('#preview')
+$(window)
     .bind('dragenter dragover', false)
     .bind 'drop', (e) =>
         e.stopPropagation()
@@ -138,7 +138,6 @@ $('#preview')
                 @ctx.moveTo.apply @ctx, @transform scene, x0, y0
                 @ctx.lineTo.apply @ctx, @transform scene, x0+dx, y0+dy
                 @ctx.stroke()
-
 
 
 $(window).resize () => @resize()
