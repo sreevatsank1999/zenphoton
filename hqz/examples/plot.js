@@ -25,6 +25,7 @@ module.exports = function (options, func)
     var resolution = options.resolution || 4.0;
     var step = options.step || 0.000001;
     var t = 0;
+    var flag = false;
     var xp, yp, ap;
 
     do {
@@ -42,7 +43,7 @@ module.exports = function (options, func)
         var da = Math.atan2(dx, -dy) * (180.0 / Math.PI);
 
         // If we have at least two points, add a segment
-        if (xp != undefined) {
+        if (flag) {
             results.push([ material, xp, yp, ap, xy0[0]-xp, xy0[1]-yp, da-ap ]);
         }
 
@@ -50,6 +51,7 @@ module.exports = function (options, func)
         xp = xy0[0];
         yp = xy0[1];
         ap = da;
+        flag = true;
 
         // Estimate how far to advance 't' by using the derivative to find a step
         // that should approximate the requested resolution in scene units.
