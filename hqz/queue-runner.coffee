@@ -27,6 +27,12 @@
 #   On completion, a superset of the above JSON will be sent back
 #   to the output queue.
 #
+#   Auto-shutdown is optional. Normally queue-runner will keep running
+#   indefinitely. But to help in building clusters that automatically
+#   scale down, an HQZ_MIN_CPU environment variable can
+#   be set. When the proportion of in-use CPUs to available CPUs stays
+#   below this value for 10 minutes, we exit.
+#
 ######################################################################
 #
 #   This file is part of HQZ, the batch renderer for Zen Photon Garden.
@@ -66,6 +72,7 @@ AWS.config.maxRetries = 50
 sqs = new AWS.SQS({ apiVersion: '2012-11-05' }).client
 s3 = new AWS.S3({ apiVersion: '2006-03-01' }).client
 numCPUs = require('os').cpus().length
+minUtilization = +(process.env.HQZ_MIN_CPU or 0)
 
 kHeartbeatSeconds = 30
 kHQZ = './hqz'
@@ -95,6 +102,20 @@ class Runner
         msg = "[ #{ @numRunning } of #{ numCPUs } processes running ]"
         return log msg if count <= 0
         log msg + " -- Looking for work..."
+
+        if @numRunning / numCPUs >= minUtilization
+            @shutdownDeadline = null
+        else
+            now = (new Date).getTime()
+            if !@shutdownDeadline 
+                @shutdownDeadline = now + (10 * 60 * 1000)
+            delta = @shutdownDeadline - now
+            log "CPU Utilization below minimum of #{minUtilization}."
+            if delta < 0
+                log "Exiting"
+                process.exit 0
+            else
+                log "Exiting in #{ delta / 1000 } seconds."
 
         @numRequested += count
 
