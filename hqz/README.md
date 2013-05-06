@@ -81,6 +81,8 @@ If you don't have your own computing cluster, you can rent one inexpensively fro
 
 The command `cluster-start.coffee <N>` spawns N cluster nodes. Each one will render up to 8 frames simultaneously. Larger clusters will finish your animation faster, but watch out for unused capacity near the end of the job. You can add and remove nodes during a job without any problem. Start additional nodes by running `cluster-start` again, or stop **all** nodes by running `cluster-stop.coffee`. If you need to stop individual nodes, use the EC2 management console.
 
+Cluster nodes will automatically stop as the work queue starts to run dry. Most instances started with `cluster-start` will automatically power off if they are less than 50% utilized for at least 10 minutes. This will scale the cluster down gradually as a large job finishes. To ensure the queue is fully drained and all frames render, every invocation of `cluster-start` will create two instances that are configured to stay alive until they are entirely idle for 10 minutes.
+
 Note that `cluster-start` configures the cluster nodes using a shell script supplied via EC2 userdata. The cluster nodes have no permanent storage. On boot, they use `apt-get` and `npm` to install prerequisites, then they download the source for `hqz` from GitHub, compile it, and finally start `queue-runner` in an infinite loop. You can check on the status of these cluster nodes using `cluster-status.coffee`. The optional `-v` flag will also display the system console output from all running nodes.
 
 ### Video Encoding

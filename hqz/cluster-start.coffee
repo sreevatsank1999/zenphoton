@@ -44,7 +44,7 @@
 # Tweakables
 
 kRoleName       = 'hqz-node'
-kSpotPrice      = "0.25"            # Maximum price per instance-hour
+kSpotPrice      = "0.10"            # Maximum price per instance-hour
 kImageId        = "ami-2efa9d47"    # Ubuntu 12.04 LTS, x64, us-east-1
 kInstanceType   = "c1.xlarge"       # High-CPU instance
 
@@ -72,7 +72,14 @@ if process.argv.length != 3
 numInstances = process.argv[2] | 0
 process.exit 0 if numInstances <= 0
 
-script = """
+numStickyInstances = Math.min numInstances, 2
+numBurstInstances = Math.max 0, numInstances - numStickyInstances
+
+script = (minCPU) -> 
+    # Set up queue-runner and run it in a loop until it
+    # gracefully powers off due to having less than 'minCPU'
+    # core utilization.
+    """
     #!/bin/sh
 
     apt-get update
@@ -82,15 +89,41 @@ script = """
     ln -s /usr/bin/nodejs /usr/bin/node
     export NODE_PATH=/usr/local/lib/node_modules
     export AWS_REGION=#{ AWS.config.region }
+    export HQZ_MIN_CPU=#{ minCPU }
 
     git clone https://github.com/scanlime/zenphoton.git
     cd zenphoton/hqz
     make
 
-    while true; do
-        ./queue-runner.coffee
-    done
+    until ./queue-runner.coffee; do true; done
+    poweroff
     """
+
+requestInstances = (minCPU, num, cb) ->
+    return cb null, {} if num <= 0
+
+    ec2.requestSpotInstances
+        SpotPrice: kSpotPrice
+        InstanceCount: num
+        Type: "one-time"
+
+        LaunchSpecification:
+            ImageId: kImageId
+            InstanceType: kInstanceType
+            IamInstanceProfile:
+                Name: "#{kRoleName}-instance"
+            UserData:
+                Buffer(script(minCPU)).toString('base64')
+
+        # Tag each spot request
+        (error, data) ->
+            return cb error if error
+            requests = ( spot.SpotInstanceRequestId for spot in data.SpotInstanceRequests )
+            log '  ' + JSON.stringify requests
+            ec2.createTags
+                Resources: requests
+                Tags: kInstanceTags
+                cb
 
 assumeRolePolicy =
     Version: "2012-10-17"
@@ -157,30 +190,13 @@ async.waterfall [
                 return cb null, {} if error and error.code == 'LimitExceeded'
                 cb error, data
 
-    # Request spot instances
     (data, cb) -> 
-        log "Requesting spot instances"
-        ec2.requestSpotInstances
-            SpotPrice: kSpotPrice
-            InstanceCount: numInstances
-            Type: "one-time"
-            LaunchSpecification:
-                ImageId: kImageId
-                InstanceType: kInstanceType
-                IamInstanceProfile:
-                    Name: "#{kRoleName}-instance"
-                UserData:
-                    Buffer(script).toString('base64')
-            cb
+        log "Requesting sticky spot instances"
+        requestInstances 0.001, numStickyInstances, cb
 
-    # Tag each spot request
-    (data, cb) ->
-        requests = ( spot.SpotInstanceRequestId for spot in data.SpotInstanceRequests )
-        log util.inspect requests
-        ec2.createTags
-            Resources: requests
-            Tags: kInstanceTags
-            cb
+    (data, cb) -> 
+        log "Requesting burst spot instances"
+        requestInstances 0.5, numBurstInstances, cb
 
 ], (error, data) ->
     return log util.inspect error if error
