@@ -107,10 +107,11 @@ $(window)
     for obj in scene.lights
         x = @sampleCenter obj[1]
         y = @sampleCenter obj[2]
+        angle = Math.PI / 180 * @sampleCenter obj[5]
         [x, y] = @transform scene, x, y
         @ctx.beginPath()
-        @ctx.arc x, y, 80, 0, 2 * Math.PI, false
-        @ctx.arc x, y, 100, 0, 2 * Math.PI, false
+        @ctx.arc x, y, 80, angle + 0, angle + 2 * Math.PI, false
+        @ctx.arc x, y, 100, angle + 0, angle + 2 * Math.PI, false
         @ctx.stroke()
 
     for obj in scene.objects
