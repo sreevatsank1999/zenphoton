@@ -44,11 +44,10 @@
  *
  */
 
-class Sampler {
-private:
+struct Sampler
+{
     PRNG mRandom;
 
-public:
     typedef rapidjson::Value Value;
 
     struct Bounds {
@@ -64,6 +63,9 @@ public:
     Sampler(uint32_t seed) {
         mRandom.seed(seed);
     }
+
+    Sampler(const Sampler &parent)
+        : mRandom(parent.mRandom) {}
 
     uint32_t uniform32() {
         return mRandom.uniform32();

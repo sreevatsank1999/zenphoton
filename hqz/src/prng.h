@@ -13,12 +13,27 @@ private:
     uint32_t rng0, rng1, rng2, rng3;
 
 public:
+    /**
+     * Thoroughly but relatively slowly reinitialize the PRNG state
+     * based on a provided 32-bit value. This runs the algorithm for
+     * enough rounds to ensure good mixing.
+     */
     void seed(uint32_t s)
     {
         rng0 = 0xf1ea5eed;
         rng1 = rng2 = rng3 = s;
         for (unsigned i = 0; i < 20; ++i)
             uniform32();
+    }
+
+    /**
+     * This quickly but haphazardly mixes additional entropy into
+     * the PRNG without fully re-seeding it.
+     */
+    void remix(uint32_t v)
+    {
+        rng3 ^= v;
+        rng0 ^= v;
     }
 
     uint32_t __attribute__((always_inline)) uniform32()

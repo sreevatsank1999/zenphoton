@@ -61,7 +61,7 @@ private:
     Node mRoot;
     const Value *mObjects;
 
-    bool rayIntersect(IntersectionData &d, uint32_t seed, Visitor &v);
+    bool rayIntersect(IntersectionData &d, Sampler &s, Visitor &v);
     void split(Visitor &v);
     double splitPosition(Visitor &v);
 };
@@ -233,10 +233,10 @@ inline double ZQuadtree::splitPosition(Visitor &v)
 inline bool ZQuadtree::rayIntersect(IntersectionData &d, Sampler &s)
 {
     Visitor v = Visitor::root(this);
-    return rayIntersect(d, s.uniform32(), v);
+    return rayIntersect(d, s, v);
 }
 
-inline bool ZQuadtree::rayIntersect(IntersectionData &d, uint32_t seed, Visitor &v)
+inline bool ZQuadtree::rayIntersect(IntersectionData &d, Sampler &s, Visitor &v)
 {
     // Swappable buffers for keeping track of the closest intersection
     IntersectionData intersections[2];
@@ -269,12 +269,15 @@ inline bool ZQuadtree::rayIntersect(IntersectionData &d, uint32_t seed, Visitor 
         /*
          * Create a nested per-object sampler which allows us to test objects
          * in an arbitrary order without affecting the stream of values produced by
-         * the parent sampler. This is vital to ensure we don't disturb the course of
-         * a scene's rays when arbitrary quadtree split boundaries change from frame to frame.
+         * the parent sampler. The sampler must be perturbed in a way specific to
+         * each object, however, since it's important not to allow correlation in
+         * the random values used by different objects.
          */
-        Sampler sampler(seed + index);
 
-        if (ZObject::rayIntersect(object, *scratch, sampler) && scratch->distance < closest->distance) {
+        Sampler tempSampler = s;
+        tempSampler.mRandom.remix(index);
+
+        if (ZObject::rayIntersect(object, *scratch, tempSampler) && scratch->distance < closest->distance) {
             std::swap(closest, scratch);
             closest->object = &object;
             result = true;
@@ -285,13 +288,13 @@ inline bool ZQuadtree::rayIntersect(IntersectionData &d, uint32_t seed, Visitor 
     if (firstClosest < secondClosest) {
 
         if (firstHit && firstClosest < closest->distance &&
-            rayIntersect(*scratch, seed, first) && scratch->distance < closest->distance) {
+            rayIntersect(*scratch, s, first) && scratch->distance < closest->distance) {
             std::swap(closest, scratch);
             result = true;
         }
 
         if (secondHit && secondClosest < closest->distance &&
-            rayIntersect(*scratch, seed, second) && scratch->distance < closest->distance) {
+            rayIntersect(*scratch, s, second) && scratch->distance < closest->distance) {
             std::swap(closest, scratch);
             result = true;
         }
@@ -299,13 +302,13 @@ inline bool ZQuadtree::rayIntersect(IntersectionData &d, uint32_t seed, Visitor 
     } else {
 
         if (secondHit && secondClosest < closest->distance &&
-            rayIntersect(*scratch, seed, second) && scratch->distance < closest->distance) {
+            rayIntersect(*scratch, s, second) && scratch->distance < closest->distance) {
             std::swap(closest, scratch);
             result = true;
         }
 
         if (firstHit && firstClosest < closest->distance &&
-            rayIntersect(*scratch, seed, first) && scratch->distance < closest->distance) {
+            rayIntersect(*scratch, s, first) && scratch->distance < closest->distance) {
             std::swap(closest, scratch);
             result = true;
         }
