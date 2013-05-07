@@ -30,6 +30,7 @@
 #include "ray.h"
 #include "sampler.h"
 #include "zobject.h"
+#include <stdio.h>
 #include <cfloat>
 #include <vector>
 
