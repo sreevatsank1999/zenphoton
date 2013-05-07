@@ -201,9 +201,11 @@ async.waterfall [
                 Bucket: kBucketName
                 Key: chunk.name
                 (error, data) ->
+                    prefix = "    [#{uploadCounter} / #{obj.chunks.length}] chunk #{chunk.name}"
+
                     if not error
                         uploadCounter++
-                        console.log "   [#{uploadCounter} / #{obj.chunks.length}] chunk #{chunk.name} already uploaded"
+                        console.log "#{prefix} already uploaded"
                         cb()
 
                     else if error.code == 'NotFound'
@@ -221,7 +223,7 @@ async.waterfall [
                         gz.on 'end', () ->
                             data = bufferConcat chunks
                             uploadCounter++
-                            console.log "    [#{uploadCounter} / #{obj.chunks.length}] chunk #{chunk.name}, compressed to #{data.length} bytes"
+                            console.log "#{prefix} uploading #{data.length} bytes"
 
                             s3.putObject
                                 Bucket: kBucketName
