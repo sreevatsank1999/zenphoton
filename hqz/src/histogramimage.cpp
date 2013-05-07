@@ -110,16 +110,17 @@ void HistogramImage::line(Color c, double x0, double y0, double x1, double y1)
         br = 128.0 * sqrt(dx*dx + dy*dy) / dx;
     }
 
-    // X axis clipping
+    // X axis clipping.
+    // Note the odd comparisons: We want to return on NaN.
 
-    if (x1 < 0.0) return;
-    if (x0 > limitX) return;
-    if (x0 < 0.0) {
+    if (!(x1 >= 0.0)) return;
+    if (!(x0 <= limitX)) return;
+    if (!(x0 >= 0.0)) {
         double delta = 0.0 - x0;
         x0 = 0.0;
         y0 += gradient * delta;
     }
-    if (x1 > limitX) {
+    if (!(x1 <= limitX)) {
         double delta = limitX - x1;
         x1 = limitX;
         y1 += gradient * delta;
@@ -131,14 +132,14 @@ void HistogramImage::line(Color c, double x0, double y0, double x1, double y1)
     if (gradient < 0.0) {
         // Y axis clipping, negative slope
 
-        if (y0 < 0.0) return;
-        if (y1 > limitY) return;
-        if (y1 < 0.0) {
+        if (!(y0 >= 0.0)) return;
+        if (!(y1 <= limitY)) return;
+        if (!(y1 >= 0.0)) {
             double delta = 0.0 - y1;
             y1 = 0.0;
             x1 += delta / gradient;
         }
-        if (y0 > limitY) {
+        if (!(y0 <= limitY)) {
             double delta = limitY - y0;
             y0 = limitY;
             x0 += delta / gradient;
@@ -147,19 +148,26 @@ void HistogramImage::line(Color c, double x0, double y0, double x1, double y1)
     } else {
         // Y axis clipping, positive slope
 
-        if (y1 < 0.0) return;
-        if (y0 > limitY) return;
-        if (y0 < 0.0) {
+        if (!(y1 >= 0.0)) return;
+        if (!(y0 <= limitY)) return;
+        if (!(y0 >= 0.0)) {
             double delta = 0.0 - y0;
             y0 = 0.0;
             x0 += delta / gradient;
         }
-        if (y1 > limitY) {
+        if (!(y1 <= limitY)) {
             double delta = limitY - y1;
             y1 = limitY;
             x1 += delta / gradient;
         }
     }
+
+    // Weed out lines with NaN coordinates after clipping
+
+    if (x0 != x0) return;
+    if (y0 != y0) return;
+    if (x1 != x1) return;
+    if (y1 != y1) return;
 
     // First endpoint
 
