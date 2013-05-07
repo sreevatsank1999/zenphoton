@@ -187,6 +187,12 @@ inline void ZQuadtree::split(Visitor &v)
         }
     }
 
+    if (0) {
+        printf("Splitting [%f, %f, %f, %f] orig: %d self: %d first: %d second: %d\n",
+            v.bounds.left, v.bounds.top, v.bounds.right, v.bounds.bottom,
+            end, out, (int)first.current->objects.size(), (int)second.current->objects.size());
+    }
+
     node.objects.resize(out);
 
     // Recursively split child nodes    
