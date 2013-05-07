@@ -38,7 +38,7 @@ To use the cluster rendering features or the `zen2json` converter, you'll need [
 
 Once you have Node.js, you can use its [npm](https://npmjs.org/) package manager to install the other dependencies:
 
-	npm install aws-sdk coffee-script async arc4rand
+	npm install aws-sdk coffee-script async clarinet arc4rand
 	
 Now the scripts mentioned below should have everything they need.
 
