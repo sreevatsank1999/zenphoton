@@ -7,6 +7,8 @@ HQZ_OBJS := \
 	src/main.o \
 	src/lodepng.o
 
+TMP_FILES := examples/benchmark.json examples/benchmark.png
+
 CDEPS := src/*.h
 
 CCFLAGS := -Isrc
@@ -24,11 +26,14 @@ hqz: $(HQZ_OBJS)
 	$(CC) -c -o $@ $< $(CCFLAGS)
 
 # Simple benchmarking target
-time: hqz
-	time ./hqz example.json example.png
-	open example.png
+time: hqz examples/benchmark.json
+	time ./hqz examples/benchmark.json examples/benchmark.png
+	open examples/benchmark.png
+
+examples/%.json: examples/%.coffee
+	coffee $< > $@
 
 .PHONY: clean time
 
 clean:
-	rm -f $(BINS) $(HQZ_OBJS)
+	rm -f $(BINS) $(HQZ_OBJS) $(TMP_FILES)
