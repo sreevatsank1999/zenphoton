@@ -56,6 +56,7 @@ s3 = new AWS.S3({ apiVersion: '2006-03-01' }).client
 kRenderQueue = "zenphoton-hqz-render-queue"
 kResultQueue = "zenphoton-hqz-results"
 kBucketName = process.env.HQZ_BUCKET
+kChunkSizeLimit = 16 * 1024 * 1024
 
 
 pad = (str, length) ->
@@ -74,7 +75,6 @@ bufferConcat = (list) ->
         buf.copy(result, offset)
         offset += buf.length
     return result
-
 
 if process.argv.length != 3
     console.log "usage: queue-submit JOBNAME.json"
@@ -109,79 +109,128 @@ async.waterfall [
                     console.log "    sha1 #{h}"
                     cb null, h.slice(0, 8)
 
-            # Gzipped in-memory input buffer
-            gzScene: (cb) ->
-                gz = zlib.createGzip()
-                chunks = []
-                s = fs.createReadStream filename
-                s.pipe gz
-                gz.on 'data', (chunk) -> chunks.push chunk
-                gz.on 'end', () ->
-                    data = bufferConcat chunks
-                    console.log "    compressed to #{data.length} bytes"
-                    cb null, data
-
-            # Number of frames. Count lines, ignoring up to one trailing newline.
-            frameCount: (cb) ->
-                frames = 1
+            # Info about frames: Total number of frames, and a list of file
+            # offsets used for reading groups of frames later.
+            frames: (cb) ->
+                frameOffsets = [ 0 ]
+                offset = 0
                 tail = true
                 s = fs.createReadStream filename
 
                 s.on 'data', (d) ->
-                    l = d.toString().split('\n')
-                    frames += l.length - 1
-                    tail = (l[l.length - 1] == '')
+                    parts = d.toString().split('\n')
+
+                    # If we found any newlines, record their location
+                    for i in [0 .. parts.length - 2] by 1
+                        offset += parts[i].length
+                        frameOffsets.push offset
+                        offset += 1
+
+                    last = parts[parts.length - 1]
+                    offset += last.length
+                    tail = (last == '')
 
                 s.on 'end', (e) ->
+                    frames = frameOffsets.length
                     frames-- if tail
-                    if frames == 1
+
+                    if frames.length == 1
                         console.log "    found a single frame"
                     else
                         console.log "    found animation with #{ frames } frames"
-                    cb null, frames
+
+                    # frameOffsets always has a beginning and end for each frame.
+                    frameOffsets.push offset
+
+                    cb null,
+                        count: frames
+                        offsets: frameOffsets
             cb
 
     (obj, cb) ->
-        # Upload scene only if it isn't already on S3
-
         # Create a unique identifier for this job
         jobName = path.basename filename, '.json'
         obj.key = jobName + '/' + obj.hash
-        obj.jsonKey = obj.key + '.json.gz'
 
-        s3.headObject
-            Bucket: kBucketName
-            Key: obj.jsonKey
-            (error, data) ->
+        # Examine the frames we have to render. Generate a list of work items
+        # and split our scene up into one or more chunks. Each chunk will have a whole
+        # number of frames in it, and be of a bounded size.
 
-                if not error
-                    console.log "Scene data already uploaded as #{obj.jsonKey}"
-                    cb error, obj
+        obj.work = []
+        obj.chunks = []
 
-                else if error.code == 'NotFound'
-                    console.log "Uploading scene as #{obj.jsonKey}"
-                    s3.putObject
-                        Bucket: kBucketName
-                        ContentType: 'application/json'
-                        Key: obj.jsonKey
-                        Body: obj.gzScene
-                        (error, data) ->
-                            return cb error if error
-                            cb error, obj
+        for i in [0 .. obj.frames.count - 1]
 
-                else
-                    cb error
+            # Make a new chunk if necessary
+            chunk = obj.chunks[ obj.chunks.length - 1 ]
+            if !chunk or chunk.dataSize > kChunkSizeLimit
+                chunk =
+                    dataSize: 0
+                    name: obj.key + '-' + pad(obj.chunks.length, 4) + '.json.gz'
+                    firstFrame: i
+                    lastFrame: i
+                obj.chunks.push chunk
 
-        # Prepare work items
-        obj.work = for i in [0 .. obj.frameCount - 1]
-            Id: 'item-' + i
-            MessageBody: JSON.stringify
-                SceneBucket: kBucketName
-                SceneKey: obj.jsonKey
-                SceneIndex: i
-                OutputBucket: kBucketName
-                OutputKey: obj.key + '-' + pad(i, 4) + '.png'
-                OutputQueueUrl: obj.resultQueue.QueueUrl
+            # Add this frame to a chunk
+            chunk.lastFrame = i
+            chunk.dataSize += obj.frames.offsets[i + 1] - obj.frames.offsets[i]
+
+            # Work item
+            obj.work.push
+                Id: 'item-' + i
+                MessageBody: JSON.stringify
+                    SceneBucket: kBucketName
+                    SceneKey: chunk.name
+                    SceneIndex: i - chunk.firstFrame
+                    OutputBucket: kBucketName
+                    OutputKey: obj.key + '-' + pad(i, 4) + '.png'
+                    OutputQueueUrl: obj.resultQueue.QueueUrl
+
+        console.log obj.chunks
+        console.log obj.work
+
+        # Compress and upload all chunks
+        uploadCounter = 0
+        uploadChunks = (chunk, cb) ->
+            # Is this chunk already on S3?
+            s3.headObject
+                Bucket: kBucketName
+                Key: chunk.name
+                (error, data) ->
+                    if not error
+                        uploadCounter++
+                        console.log "   [#{uploadCounter} / #{obj.chunks.length}] chunk #{chunk.name} already uploaded"
+                        cb()
+
+                    else if error.code == 'NotFound'
+
+                        # Read and gzip just this section of the file
+                        s = fs.createReadStream filename,
+                            start: obj.frames.offsets[ chunk.firstFrame ]
+                            end: obj.frames.offsets[ chunk.lastFrame + 1 ] - 1
+
+                        # Store the chunks in an in-memory buffer
+                        gz = zlib.createGzip()
+                        chunks = []
+                        s.pipe gz
+                        gz.on 'data', (chunk) -> chunks.push chunk
+                        gz.on 'end', () ->
+                            data = bufferConcat chunks
+                            uploadCounter++
+                            console.log "    [#{uploadCounter} / #{obj.chunks.length}] chunk #{chunk.name}, compressed to #{data.length} bytes"
+
+                            s3.putObject
+                                Bucket: kBucketName
+                                ContentType: 'application/json'
+                                Key: chunk.name
+                                Body: data
+                                (error, data) -> cb error
+                    else
+                        cb error
+
+        async.eachLimit obj.chunks, 2, uploadChunks, (error) ->
+            return cb error if error
+            cb null, obj
 
     # Enqueue work items
     (obj, cb) ->
