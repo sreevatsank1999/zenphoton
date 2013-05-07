@@ -186,9 +186,6 @@ async.waterfall [
                     OutputKey: obj.key + '-' + pad(i, 4) + '.png'
                     OutputQueueUrl: obj.resultQueue.QueueUrl
 
-        console.log obj.chunks
-        console.log obj.work
-
         # Compress and upload all chunks
         uploadCounter = 0
         uploadChunks = (chunk, cb) ->
