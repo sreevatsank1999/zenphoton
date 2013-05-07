@@ -201,38 +201,36 @@ async.waterfall [
                 Bucket: kBucketName
                 Key: chunk.name
                 (error, data) ->
+                    return cb error if error and error.code != 'NotFound'
+
+                    uploadCounter++
                     prefix = "    [#{uploadCounter} / #{obj.chunks.length}] chunk #{chunk.name}"
 
                     if not error
-                        uploadCounter++
                         console.log "#{prefix} already uploaded"
-                        cb()
+                        return cb()
 
-                    else if error.code == 'NotFound'
+                    # Read and gzip just this section of the file
+                    s = fs.createReadStream filename,
+                        start: obj.frames.offsets[ chunk.firstFrame ]
+                        end: obj.frames.offsets[ chunk.lastFrame + 1 ] - 1
 
-                        # Read and gzip just this section of the file
-                        s = fs.createReadStream filename,
-                            start: obj.frames.offsets[ chunk.firstFrame ]
-                            end: obj.frames.offsets[ chunk.lastFrame + 1 ] - 1
+                    # Store the chunks in an in-memory buffer
+                    gz = zlib.createGzip()
+                    chunks = []
+                    s.pipe gz
+                    gz.on 'data', (chunk) -> chunks.push chunk
+                    gz.on 'end', () ->
+                        data = bufferConcat chunks
+                        uploadCounter++
+                        console.log "#{prefix} uploading #{data.length} bytes"
 
-                        # Store the chunks in an in-memory buffer
-                        gz = zlib.createGzip()
-                        chunks = []
-                        s.pipe gz
-                        gz.on 'data', (chunk) -> chunks.push chunk
-                        gz.on 'end', () ->
-                            data = bufferConcat chunks
-                            uploadCounter++
-                            console.log "#{prefix} uploading #{data.length} bytes"
-
-                            s3.putObject
-                                Bucket: kBucketName
-                                ContentType: 'application/json'
-                                Key: chunk.name
-                                Body: data
-                                (error, data) -> cb error
-                    else
-                        cb error
+                        s3.putObject
+                            Bucket: kBucketName
+                            ContentType: 'application/json'
+                            Key: chunk.name
+                            Body: data
+                            (error, data) -> cb error
 
         async.eachLimit obj.chunks, kConcurrentUploads, uploadChunks, (error) ->
             return cb error if error
