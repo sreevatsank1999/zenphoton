@@ -238,18 +238,20 @@ inline bool ZQuadtree::rayIntersect(IntersectionData &d, Sampler &s)
 
 inline bool ZQuadtree::rayIntersect(IntersectionData &d, uint32_t seed, Visitor &v)
 {
-    // Iterate over some objects, keeping track of the closest intersection
-    IntersectionData temp = d;
-    IntersectionData closest;
-    closest.distance = DBL_MAX;
+    // Swappable buffers for keeping track of the closest intersection
+    IntersectionData intersections[2];
+    intersections[0] = intersections[1] = d;
+    intersections[0].distance = intersections[1].distance = DBL_MAX;
+    IntersectionData *closest = &intersections[0];
+    IntersectionData *scratch = &intersections[1];
     bool result = false;
 
     Visitor first = v.first();
-    double firstClosest, firstFurthest;
+    double firstClosest = 0, firstFurthest = 0;
     bool firstHit = first && d.ray.intersectAABB(first.bounds, firstClosest, firstFurthest);
 
     Visitor second = v.second();
-    double secondClosest, secondFurthest;
+    double secondClosest = 0, secondFurthest = 0;
     bool secondHit = second && d.ray.intersectAABB(second.bounds, secondClosest, secondFurthest);
 
     // Try local objects. These could be leaves in the tree, or larger objects that
@@ -272,9 +274,9 @@ inline bool ZQuadtree::rayIntersect(IntersectionData &d, uint32_t seed, Visitor 
          */
         Sampler sampler(seed + index);
 
-        if (ZObject::rayIntersect(object, temp, sampler) && temp.distance < closest.distance) {
-            closest = temp;
-            closest.object = &object;
+        if (ZObject::rayIntersect(object, *scratch, sampler) && scratch->distance < closest->distance) {
+            std::swap(closest, scratch);
+            closest->object = &object;
             result = true;
         }
     }
@@ -282,35 +284,35 @@ inline bool ZQuadtree::rayIntersect(IntersectionData &d, uint32_t seed, Visitor 
     // Try the closest child first. Maybe we can skip testing the other side.
     if (firstClosest < secondClosest) {
 
-        if (firstHit && firstClosest < closest.distance &&
-            rayIntersect(temp, seed, first) && temp.distance < closest.distance) {
-            closest = temp;
+        if (firstHit && firstClosest < closest->distance &&
+            rayIntersect(*scratch, seed, first) && scratch->distance < closest->distance) {
+            std::swap(closest, scratch);
             result = true;
         }
 
-        if (secondHit && secondClosest < closest.distance &&
-            rayIntersect(temp, seed, second) && temp.distance < closest.distance) {
-            closest = temp;
+        if (secondHit && secondClosest < closest->distance &&
+            rayIntersect(*scratch, seed, second) && scratch->distance < closest->distance) {
+            std::swap(closest, scratch);
             result = true;
         }
 
     } else {
 
-        if (secondHit && secondClosest < closest.distance &&
-            rayIntersect(temp, seed, second) && temp.distance < closest.distance) {
-            closest = temp;
+        if (secondHit && secondClosest < closest->distance &&
+            rayIntersect(*scratch, seed, second) && scratch->distance < closest->distance) {
+            std::swap(closest, scratch);
             result = true;
         }
 
-        if (firstHit && firstClosest < closest.distance &&
-            rayIntersect(temp, seed, first) && temp.distance < closest.distance) {
-            closest = temp;
+        if (firstHit && firstClosest < closest->distance &&
+            rayIntersect(*scratch, seed, first) && scratch->distance < closest->distance) {
+            std::swap(closest, scratch);
             result = true;
         }
     }
 
     if (result) {
-        d = closest;
+        d = *closest;
     }
     return result;
 }
