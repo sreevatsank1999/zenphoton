@@ -15,7 +15,7 @@ CCFLAGS := -Isrc
 LIBS := -lstdc++ -lm
 
 CCFLAGS += -Wall -g
-CCFLAGS += -O3 -ffast-math -fno-exceptions
+CCFLAGS += -O3 -ffast-math -fno-exceptions -fomit-frame-pointer -funroll-loops
 
 all: $(BINS)
 
