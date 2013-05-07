@@ -33,6 +33,8 @@ util = require 'util'
 fs = require 'fs'
 
 log = (msg) -> console.log "[#{ (new Date).toJSON() }] #{msg}"
+logURL = console.log
+
 outputFile = "queue-watcher.log"
 
 sqs = new AWS.SQS({ apiVersion: '2012-11-05' }).client
@@ -150,14 +152,14 @@ class Watcher
                     cb
 
     handleMessage: (msg, cb) ->
-        @jobs[msg.SceneKey] = [] if not @jobs[msg.SceneKey]
-        job = @jobs[msg.SceneKey]
-        index = 0
-        index = msg.SceneIndex if msg.SceneIndex > 0
+        # Use job metadata left for us by queue-submit
+        @jobs[msg.JobKey] = [] if not @jobs[msg.SceneKey]
+        job = @jobs[msg.JobKey]
+        index = msg.JobIndex or 0
 
         # Do we have a new URL to show?
         if msg.State == 'finished'
-            log "http://#{ msg.OutputBucket }.s3.amazonaws.com/#{ msg.OutputKey }"
+            logURL "http://#{ msg.OutputBucket }.s3.amazonaws.com/#{ msg.OutputKey }"
 
         # Are we repairing failures?
         if msg.State == 'failed' and process.argv[2] == '--retry-failed'
@@ -181,7 +183,7 @@ class Watcher
             when 'finished' then " in #{ msgDuration msg }"
             else ''
 
-        log "[#{ summary.join '' }] -- #{msg.SceneKey} [#{index}] #{msg.State}#{extra}"
+        log "[#{ summary.join '' }] -- #{msg.JobKey} [#{index}] #{msg.State}#{extra}"
         cb()
 
 

@@ -56,8 +56,7 @@ s3 = new AWS.S3({ apiVersion: '2006-03-01' }).client
 kRenderQueue = "zenphoton-hqz-render-queue"
 kResultQueue = "zenphoton-hqz-results"
 kBucketName = process.env.HQZ_BUCKET
-kChunkSizeLimit = 16 * 1024 * 1024
-
+kChunkSizeLimit = 8 * 1024 * 1024
 
 pad = (str, length) ->
     str = '' + str
@@ -120,11 +119,12 @@ async.waterfall [
                 s.on 'data', (d) ->
                     parts = d.toString().split('\n')
 
-                    # If we found any newlines, record their location
+                    # If we found any newlines, record the index of the character
+                    # following the newline. This is the end of the previous frame,
+                    # or the beginning of the next.
                     for i in [0 .. parts.length - 2] by 1
-                        offset += parts[i].length
+                        offset += parts[i].length + 1
                         frameOffsets.push offset
-                        offset += 1
 
                     last = parts[parts.length - 1]
                     offset += last.length
@@ -179,6 +179,12 @@ async.waterfall [
             obj.work.push
                 Id: 'item-' + i
                 MessageBody: JSON.stringify
+
+                    # Metadata for queue-watcher
+                    JobKey: obj.key
+                    JobIndex: i
+
+                    # queue-runner parameters
                     SceneBucket: kBucketName
                     SceneKey: chunk.name
                     SceneIndex: i - chunk.firstFrame
