@@ -119,7 +119,7 @@ struct Sampler
 
     static Bounds bounds(const Value &v)
     {
-        Bounds result = { DBL_MIN, DBL_MAX };
+        Bounds result = { FLT_MIN, FLT_MAX };
 
         if (v.IsNumber()) {
             // Constant

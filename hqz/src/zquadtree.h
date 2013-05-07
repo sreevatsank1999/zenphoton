@@ -81,8 +81,8 @@ struct ZQuadtree::Visitor
     {
         Visitor v;
         v.current = &tree->mRoot;
-        v.bounds.left = v.bounds.top = DBL_MIN;
-        v.bounds.right = v.bounds.bottom = DBL_MAX;
+        v.bounds.left = v.bounds.top = FLT_MIN;
+        v.bounds.right = v.bounds.bottom = FLT_MAX;
         v.axisY = false;
         return v;
     }
@@ -241,7 +241,7 @@ inline bool ZQuadtree::rayIntersect(IntersectionData &d, Sampler &s, Visitor &v)
     // Swappable buffers for keeping track of the closest intersection
     IntersectionData intersections[2];
     intersections[0] = intersections[1] = d;
-    intersections[0].distance = intersections[1].distance = DBL_MAX;
+    intersections[0].distance = intersections[1].distance = FLT_MAX;
     IntersectionData *closest = &intersections[0];
     IntersectionData *scratch = &intersections[1];
     bool result = false;

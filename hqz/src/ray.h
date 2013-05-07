@@ -145,7 +145,7 @@ struct Ray
         bool success = false;
 
         furthest = 0;
-        closest = DBL_MAX;
+        closest = FLT_MAX;
 
         if (intersectSegment(topLeft, horizontal, dist)) {
             success = true;
