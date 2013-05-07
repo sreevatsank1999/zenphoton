@@ -162,12 +162,10 @@ void HistogramImage::line(Color c, double x0, double y0, double x1, double y1)
         }
     }
 
-    // Weed out lines with NaN coordinates after clipping
-
-    if (x0 != x0) return;
-    if (y0 != y0) return;
-    if (x1 != x1) return;
-    if (y1 != y1) return;
+    if (isnan(x0)) return;
+    if (isnan(y0)) return;
+    if (isnan(x1)) return;
+    if (isnan(y1)) return;
 
     // First endpoint
 
