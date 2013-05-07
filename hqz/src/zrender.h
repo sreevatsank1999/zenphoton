@@ -61,14 +61,6 @@ private:
     double mLightPower;
     std::ostringstream mError;
 
-    struct IntersectionData {
-        Ray ray;
-        Vec2 point;
-        Vec2 normal;
-        double distance;
-        const Value *object;
-    };
-
     struct ViewportSample {
         Vec2 origin;
         Vec2 size;
@@ -102,6 +94,5 @@ private:
 
     // Object sampling
     bool rayIntersect(IntersectionData &d, Sampler &s, const ViewportSample &v);
-    bool rayIntersectObject(IntersectionData &d, Sampler &s, const Value &object);
     void rayIntersectBounds(IntersectionData &d, const ViewportSample &v);
 };

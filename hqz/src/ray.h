@@ -27,6 +27,7 @@
 
 #pragma once
 #include <math.h>
+#include <algorithm>
 #include "spectrum.h"
 
 
@@ -35,6 +36,9 @@ struct Vec2
     double x, y;
 };
 
+struct AABB {
+    double left, top, right, bottom;
+};
 
 struct Ray
 {
@@ -113,5 +117,12 @@ struct Ray
         double alpha;
         return intersectSegment(s1, sD, distance, alpha);
     }
+};
 
+struct IntersectionData {
+    Ray ray;
+    Vec2 point;
+    Vec2 normal;
+    double distance;
+    const rapidjson::Value *object;
 };

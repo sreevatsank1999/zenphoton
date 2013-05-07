@@ -27,6 +27,7 @@
 
 #include <float.h>
 #include "zrender.h"
+#include "zobject.h"
 
 
 ZRender::ZRender(const Value &scene)
@@ -314,7 +315,10 @@ bool ZRender::rayIntersect(IntersectionData &d, Sampler &s, const ViewportSample
     for (unsigned i = 0, e = mObjects.Size(); i != e; ++i) {
         const Value &object = mObjects[i];
 
-        if (d.object != &object && rayIntersectObject(temp, s, object) && temp.distance < closest.distance) {
+        if (d.object != &object
+            && ZObject::rayIntersect(object, temp, s)
+            && temp.distance < closest.distance)
+        {
             closest = temp;
             closest.object = &object;
         }
@@ -328,55 +332,6 @@ bool ZRender::rayIntersect(IntersectionData &d, Sampler &s, const ViewportSample
 
     d = closest;
     return true;
-}
-
-bool ZRender::rayIntersectObject(IntersectionData &d, Sampler &s, const Value &object)
-{
-    /*
-     * Does this ray intersect a specific object? This samples the object once,
-     * filling in the required IntersectionData on success. If this ray and object
-     * don't intersect at all, returns false.
-     *
-     * Does not write to d.object; it is assumed that the caller does this.
-     */
-
-    switch (object.Size()) {
-
-        case 5: {
-            // Line segment
-
-            Vec2 origin = { s.value(object[1]), s.value(object[2]) };
-            Vec2 delta = { s.value(object[3]), s.value(object[4]) };
-
-            if (d.ray.intersectSegment(origin, delta, d.distance)) {
-                d.point = d.ray.pointAtDistance(d.distance);
-                d.normal.x = -delta.y;
-                d.normal.y = delta.x;
-                return true;
-            }
-            break;
-        }
-
-        case 7: {
-            // Line segment with trigonometrically interpolated normals
-
-            Vec2 origin = { s.value(object[1]), s.value(object[2]) };
-            Vec2 delta = { s.value(object[4]), s.value(object[5]) };
-            double alpha;
-
-            if (d.ray.intersectSegment(origin, delta, d.distance, alpha)) {
-                double degrees = s.value(object[3]) + alpha * s.value(object[6]);
-                double radians = degrees * (M_PI / 180.0);
-                d.point = d.ray.pointAtDistance(d.distance);
-                d.normal.x = cos(radians);
-                d.normal.y = sin(radians);
-                return true;
-            }
-            break;
-        }
-    }
-
-    return false;
 }
 
 void ZRender::rayIntersectBounds(IntersectionData &d, const ViewportSample &v)

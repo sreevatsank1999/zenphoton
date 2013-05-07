@@ -29,6 +29,8 @@
 #include "rapidjson/document.h"
 #include "prng.h"
 #include "spectrum.h"
+#include <cfloat>
+#include <algorithm>
 
 
 /*
@@ -50,6 +52,16 @@ private:
 public:
     typedef rapidjson::Value Value;
 
+    struct Bounds {
+        double min;
+        double max;
+
+        void sort() {
+            if (min > max)
+                std::swap(min, max);
+        }
+    };
+
     Sampler(uint32_t seed) {
         mRandom.seed(seed);
     }
@@ -65,6 +77,11 @@ public:
     double blackbody(double temperature) {
         return Color::blackbodyWavelength(temperature, uniform());
     }
+
+    /**
+     * Sample a JSON Value as a random variable.
+     * Returns a sampled value, and updates the sampler state.
+     */
 
     double value(const Value &v)
     {
@@ -86,4 +103,30 @@ public:
         // Unknown
         return 0;
     }
+
+    /**
+     * Determine the upper and lower bounds of a JSON Value that would
+     * be sampled as a random variable. Does not require access to sampler state.
+     *
+     * This must be kept in sync with the behavior exposed by value(), in order
+     * to calculate bounding boxes for objects.
+     */
+
+    static Bounds bounds(const Value &v)
+    {
+        Bounds result = { DBL_MIN, DBL_MAX };
+
+        if (v.IsNumber()) {
+            // Constant
+            result.min = result.max = v.GetDouble();
+
+        } else if (v.IsArray() && v.Size() == 2 && v[0u].IsNumber() && v[1].IsNumber()) {
+            // Uniform
+            result.min = v[0u].GetDouble();
+            result.max = v[1].GetDouble();
+            result.sort();
+        }
+
+        return result;
+    }        
 };
