@@ -153,7 +153,7 @@ class Watcher
 
     handleMessage: (msg, cb) ->
         # Use job metadata left for us by queue-submit
-        @jobs[msg.JobKey] = [] if not @jobs[msg.SceneKey]
+        @jobs[msg.JobKey] = [] if not @jobs[msg.JobKey]
         job = @jobs[msg.JobKey]
         index = msg.JobIndex or 0
 
