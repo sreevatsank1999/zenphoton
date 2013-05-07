@@ -82,8 +82,23 @@ ZRender::ZRender(const Value &scene)
 
 void ZRender::render(std::vector<unsigned char> &pixels)
 {
-    unsigned numRays = checkInteger(mScene["rays"], "rays");
-    double exposure = mScene["exposure"].GetDouble();
+    int numRays = checkInteger(mScene["rays"], "rays");
+    if (numRays > 0) {
+        /*
+         * Note that each ray is seeded separately, so that rays are independent events
+         * with respect to the PRNG sequence. This helps keep our noise pattern stationary,
+         * which is a nice effect to have during animation.
+         */
+
+        for (unsigned i = numRays; i; --i) {
+            Sampler s(mSeed + i);
+            traceRay(s);
+        }
+    }
+
+    /*
+     * Optional gamma correction. Defaults to linear, for compatibility with zenphoton.
+     */
 
     double gamma = 0.0;
     if (mScene["gamma"].IsNumber())
@@ -91,21 +106,13 @@ void ZRender::render(std::vector<unsigned char> &pixels)
     if (gamma <= 0.0)
         gamma = 1.0;
 
-    /*
-     * Note that each ray is seeded separately, so that rays are independent events
-     * with respect to the PRNG sequence. This helps keep our noise pattern stationary,
-     * which is a nice effect to have during animation.
-     */
-    for (unsigned i = numRays; i; --i) {
-        Sampler s(mSeed + i);
-        traceRay(s);
-    }
-
     /* 
      * Exposure calculation as a backward-compatible generalization of zenphoton.com.
      * We need to correct for differences due to resolution and due to the higher
      * fixed-point resolution we use during histogram rendering.
      */
+
+    double exposure = mScene["exposure"].GetDouble();
     double areaScale = sqrt(double(width()) * height() / (1024 * 576));
     double intensityScale = mLightPower / (255.0 * 8192.0);
     double scale = exp(1.0 + 10.0 * exposure) * areaScale * intensityScale / numRays;
