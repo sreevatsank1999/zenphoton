@@ -5,8 +5,8 @@
 
 @status = 'Drop animation JSON file here'
 @aspect = 16/9
-@margin = 10
 @fps = 30
+@frameRequested = false
 
 $(window)
     .bind('dragenter dragover', false)
@@ -35,8 +35,8 @@ $(window)
         reader.readAsText files[0] 
 
 @resize = () ->
-    @width = window.innerWidth - @margin
-    @height = window.innerHeight - @margin
+    @width = window.innerWidth
+    @height = window.innerHeight
     if @width / @height > @aspect
         @width = @height * @aspect
     else
@@ -65,22 +65,33 @@ $(window)
             frame = 0
             @beginTime = now
 
-        @drawFrame @fileData[frame]
+        scene = @fileData[frame]
+        @drawFrame scene
 
         @ctx.font = "12px sans-serif"
         @ctx.textAlign = 'left'
         @ctx.textBaseline = 'top'
-        @ctx.fillStyle = '#888'
+
+        @ctx.fillStyle = '#ddd'
         @ctx.fillText "Frame #{frame}, #{(frame / @fps)|0} sec", 5, 5
 
-        window.requestAnimationFrame () => @redraw()
+        @ctx.fillStyle = '#888'
+        @ctx.fillText "Exposure: #{ scene.exposure }", 5, 30
+        @ctx.fillText "Rays: #{ scene.rays }", 5, 45
+        @ctx.fillText "Objects: #{ scene.objects.length }", 5, 60
+
+        if not @frameRequested
+            @frameRequested = true
+            window.requestAnimationFrame () =>
+                @frameRequested = false
+                @redraw()
 
     if @status
-        @ctx.font = "#{@height * 0.1}px sans-serif"
+        @ctx.font = "20px sans-serif"
         @ctx.textAlign = 'center'
         @ctx.textBaseline = 'middle'
         @ctx.fillStyle = '#888'
-        @ctx.fillText @status, @width * 0.5, @height * 0.3
+        @ctx.fillText @status, @width * 0.5, @height * 0.5
 
 @sampleCenter = (obj) ->
     # Sample a 'typical' value for the random variable 'obj'
@@ -150,7 +161,7 @@ $(document).ready () => @resize()
 <style>
 
 body {
-    background: #111;
+    background: #333;
     overflow: hidden;
     height: 100%;
     margin: 0;
@@ -160,7 +171,6 @@ body {
 #preview {
     display: block;
     position: absolute;
-    border: 1px solid #444;
     top: 50%;
     left: 50%;
 }
