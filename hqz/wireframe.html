@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html><head><meta charset='utf-8' />
-<title>hqz preview-animation</title>
+<title>wireframe hqz preview</title>
 <script type='text/coffeescript'>
 
-@status = 'Drop animation JSON file here'
+@status = 'Drop .json file here'
 @aspect = 16/9
 @fps = 30
 @frameRequested = false
@@ -26,8 +26,7 @@ $(window)
         reader = new FileReader
         reader.onload = (e) =>
             try
-                @fileData = JSON.parse e.target.result
-                @fileLoaded @fileData
+                @fileLoaded JSON.parse e.target.result
             catch error
                 @status = error
             @redraw()
@@ -80,11 +79,21 @@ $(window)
         @ctx.fillText "Rays: #{ scene.rays }", 5, 45
         @ctx.fillText "Objects: #{ scene.objects.length }", 5, 60
 
-        if not @frameRequested
+        # Do we need to animate?
+        if @fileData.length > 1 and not @frameRequested
             @frameRequested = true
             window.requestAnimationFrame () =>
                 @frameRequested = false
                 @redraw()
+
+    else
+        # Nothing playing; display a name badge
+
+        @ctx.font = "#{@width * 0.07}px courier"
+        @ctx.textAlign = 'center'
+        @ctx.textBaseline = 'top'
+        @ctx.fillStyle = '#444'
+        @ctx.fillText "wireframe hqz preview", @width * 0.5, 0
 
     if @status
         @ctx.font = "20px sans-serif"
@@ -99,9 +108,19 @@ $(window)
     return obj
 
 @fileLoaded = (data) ->
+    if !data.length
+        # Single frame
+        @fileData = [data]
+    else
+        # Animation
+        @fileData = data
+
+    # Use resolution from first frame only
+    res = @fileData[0].resolution
+
     @beginTime = new Date()
     @status = ''
-    @aspect = sampleCenter(data[0].resolution[0]) / sampleCenter(data[0].resolution[1])
+    @aspect = sampleCenter(res[0]) / sampleCenter(res[1])
     @resize()
 
 @transform = (scene, x, y) ->
