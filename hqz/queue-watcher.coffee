@@ -148,8 +148,9 @@ class Watcher
         if msg.State == 'finished'
             log "http://#{ msg.OutputBucket }.s3.amazonaws.com/#{ msg.OutputKey }"
 
-        # Update the state of this render job
-        job[index] = msg.State
+        # Update the state of this render job. Note that messages may arrive out of order,
+        # so 'started' only has an effect if the frame hasn't already taken on a different state.    
+        job[index] = msg.State if msg.State != 'started' or !job[index]
 
         # Summarize the job state
         summary = for i in [0 .. job.length - 1]
