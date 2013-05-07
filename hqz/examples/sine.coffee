@@ -36,8 +36,7 @@ sineFunc = (frame, seed, x0, y0, w, h, angle) ->
         dy = Math.sin angle
         [ x0 + dx*x + dy*y, y0 + dy*x - dx*y ]
 
-frames = for frame in [0 .. 599]
-
+scene = (frame) ->
     resolution: [1920, 1080]
     rays: RAYS
     exposure: 0.65
@@ -63,4 +62,4 @@ frames = for frame in [0 .. 599]
             sineFunc frame, '1', -140, 470, 3000, 900, deg 10 
     )
 
-console.log JSON.stringify frames
+console.log JSON.stringify scene i for i in [0 .. 599]

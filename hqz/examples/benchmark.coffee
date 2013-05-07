@@ -46,8 +46,7 @@ fuzzify = (objs) ->
         o[2] = [ o[2] - 5, o[2] + 5 ]
     return objs    
 
-frames = do (frame = 0) ->
-
+scene = (frame) ->
     resolution: [1920, 1080]
     rays: RAYS
     exposure: 0.65
@@ -73,4 +72,4 @@ frames = do (frame = 0) ->
             sineFunc frame, '1', -140, 470, 3000, 900, deg 10 
     )
 
-console.log JSON.stringify frames
+console.log JSON.stringify scene 0

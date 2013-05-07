@@ -12,14 +12,14 @@
 #
 #   Required Node modules:
 #
-#      npm install aws-sdk coffee-script async
+#      npm install aws-sdk coffee-script async async-cache
 #
 #   This accepts JSON messages on an SQS queue. These messages are
 #   objects with the following members:
 #
 #      SceneBucket:     S3 bucket for scene data
 #      SceneKey:        S3 key for scene data
-#      SceneIndex:      Optional array index in scene JSON data
+#      SceneIndex:      Optional line index in scene JSON data
 #      OutputBucket:    S3 bucket for output data
 #      OutputKey:       S3 key for output data
 #      OutputQueueUrl:  SQS QueueUrl to post completion messages to
@@ -63,6 +63,7 @@
 
 AWS = require 'aws-sdk'
 async = require 'async'
+AsyncCache = require 'async-cache'
 util = require 'util'
 child_process = require 'child_process'
 os = require 'os'
@@ -177,35 +178,13 @@ class MessageHandler
 
             (cb) =>
                 # Download scene data if we need it.
-
-                # XXX: We may still download the same file multiple times concurrently
-                #      if a new job comes in while the file is still downloading.
-
-                if sceneMemo.Bucket == @msg.SceneBucket and sceneMemo.Key == @msg.SceneKey
-                    log "Using cached copy of #{@msg.SceneKey}"
-                    cb null, sceneMemo.Cache
-
-                else
-                    log "Downloading #{@msg.SceneKey}"
-                    s3.getObject
-                        Bucket: @msg.SceneBucket
-                        Key: @msg.SceneKey
-                        cb
-
-            (data, cb) =>
-                # Cache the downloaded scene
-                sceneMemo.Bucket = @msg.SceneBucket
-                sceneMemo.Key = @msg.SceneKey
-                sceneMemo.Cache = data
-
-                # Decompress the scene
-                zlib.gunzip data.Body, cb
+                s3cache.get "#{@msg.SceneBucket}/#{@msg.SceneKey}", cb
 
             (data, cb) =>
                 # Decode the frame we're interested in
                 try
                     if @msg.SceneIndex >= 0
-                        @scene = JSON.stringify( JSON.parse(data)[@msg.SceneIndex] )
+                        @scene = data.toString().split('\n')[@msg.SceneIndex]
                     else
                         @scene = data
                 catch error
@@ -324,6 +303,24 @@ bufferConcat = (list) ->
         buf.copy(result, offset)
         offset += buf.length
     return result
+
+
+s3cache = new AsyncCache
+    # Cache decompressed objects from S3
+    max: 512 * 1024 * 1024
+    maxAge: 1000 * 60 * 60
+    length: (obj) -> obj.length
+    load: (key, cb) ->
+        log "Downloading #{key}"
+        path = key.split '/'
+        bucket = path.shift()
+        s3.getObject
+            Bucket: bucket
+            Key: path.join '/'
+            (error, data) ->
+                log "Decompressing #{key}"
+                return cb error if error
+                zlib.gunzip data.Body, cb
 
 
 qr = new Runner

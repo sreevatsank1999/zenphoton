@@ -73,8 +73,7 @@ zoomViewport = (width, height, focusX, focusY, zoom) ->
 
     [ left, top, right - left, bottom - top ]
 
-frames = for frame in [0 .. 255]
-
+scene = (frame) ->
     resolution: [1920, 1080]
     rays: RAYS
     exposure: 0.65
@@ -101,4 +100,4 @@ frames = for frame in [0 .. 255]
         drawTree frame, '3', 1300, 12, -180 
     )
 
-console.log JSON.stringify frames
+console.log JSON.stringify scene i for i in [0 .. 255]

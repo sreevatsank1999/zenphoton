@@ -7,6 +7,7 @@
 @aspect = 16/9
 @fps = 30
 @frameRequested = false
+@lines = []
 
 $(window)
     .bind('dragenter dragover', false)
@@ -15,7 +16,9 @@ $(window)
         e.preventDefault()
         files = e.target.files or e.originalEvent.dataTransfer.files
 
-        @fileData = null
+        # Trash old file first
+        @lines = []
+
         @status = 'Loading...'
         @redraw()
 
@@ -26,7 +29,7 @@ $(window)
         reader = new FileReader
         reader.onload = (e) =>
             try
-                @fileLoaded JSON.parse e.target.result
+                @fileLoaded e.target.result
             catch error
                 @status = error
             @redraw()
@@ -57,14 +60,14 @@ $(window)
     @ctx.fillStyle = '#111'
     @ctx.fillRect 0, 0, @width, @height
 
-    if @fileData and @fileData.length
+    if @lines.length
         now = new Date()
         frame = ((now - @beginTime) * @fps / 1000) | 0
-        if frame >= @fileData.length
+        if frame >= @lines.length
             frame = 0
             @beginTime = now
 
-        scene = @fileData[frame]
+        scene = JSON.parse @lines[frame]
         @drawFrame scene
 
         @ctx.font = "12px sans-serif"
@@ -80,7 +83,7 @@ $(window)
         @ctx.fillText "Objects: #{ scene.objects.length }", 5, 60
 
         # Do we need to animate?
-        if @fileData.length > 1 and not @frameRequested
+        if @lines.length > 1 and not @frameRequested
             @frameRequested = true
             window.requestAnimationFrame () =>
                 @frameRequested = false
@@ -108,19 +111,14 @@ $(window)
     return obj
 
 @fileLoaded = (data) ->
-    if !data.length
-        # Single frame
-        @fileData = [data]
-    else
-        # Animation
-        @fileData = data
-
-    # Use resolution from first frame only
-    res = @fileData[0].resolution
+    lines = data.trim().split '\n'
+    firstFrame = JSON.parse lines[0]
+    res = firstFrame.resolution
 
     @beginTime = new Date()
     @status = ''
     @aspect = sampleCenter(res[0]) / sampleCenter(res[1])
+    @lines = lines
     @resize()
 
 @transform = (scene, x, y) ->

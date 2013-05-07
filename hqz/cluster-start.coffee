@@ -84,7 +84,7 @@ script = (minCPU) ->
 
     apt-get update
     apt-get install -y nodejs npm make gcc g++ git
-    npm install -g coffee-script aws-sdk async
+    npm install -g coffee-script aws-sdk async async-cache
 
     ln -s /usr/bin/nodejs /usr/bin/node
     export NODE_PATH=/usr/local/lib/node_modules

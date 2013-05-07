@@ -49,7 +49,6 @@ fs = require 'fs'
 crypto = require 'crypto'
 zlib = require 'zlib'
 path = require 'path'
-clarinet = require 'clarinet'
 
 sqs = new AWS.SQS({ apiVersion: '2012-11-05' }).client
 s3 = new AWS.S3({ apiVersion: '2006-03-01' }).client
@@ -122,38 +121,24 @@ async.waterfall [
                     console.log "    compressed to #{data.length} bytes"
                     cb null, data
 
-            # Number of frames, or null if this isn't an animation
+            # Number of frames. Count lines, ignoring up to one trailing newline.
             frameCount: (cb) ->
-                level = 0
-                frames = 0
-                isSingleFrame = true
-                stream = clarinet.createStream()
-                fs.createReadStream(filename).pipe(stream)
+                frames = 1
+                tail = true
+                s = fs.createReadStream filename
 
-                stream.on 'openobject', (key) ->
-                    frames++ if level == 1 and !isSingleFrame
-                    level++
+                s.on 'data', (d) ->
+                    l = d.toString().split('\n')
+                    frames += l.length - 1
+                    tail = (l[l.length - 1] == '')
 
-                stream.on 'closeobject', () ->
-                    level--
-
-                stream.on 'openarray', () ->
-                    isSingleFrame = false if level == 0
-                    level++
-
-                stream.on 'closearray', () ->
-                    level--
-
-                stream.on 'error', (e) ->
-                    cb error
-
-                stream.on 'end', (e) ->
-                    if isSingleFrame
-                        cb null, null
-                        console.log "    rendering a single frame"
+                s.on 'end', (e) ->
+                    frames-- if tail
+                    if frames == 1
+                        console.log "    found a single frame"
                     else
-                        cb null, frames
-                        console.log "    animation with #{ frames } frames"
+                        console.log "    found animation with #{ frames } frames"
+                    cb null, frames
             cb
 
     (obj, cb) ->
@@ -188,27 +173,15 @@ async.waterfall [
                     cb error
 
         # Prepare work items
-
-        if obj.frameCount == null
-            obj.work = [
-                Id: 'single'
-                MessageBody: JSON.stringify
-                    SceneBucket: kBucketName
-                    SceneKey: obj.jsonKey
-                    OutputBucket: kBucketName
-                    OutputKey: obj.key + '.png'
-                    OutputQueueUrl: obj.resultQueue.QueueUrl
-            ]
-        else
-            obj.work = for i in [0 .. obj.frameCount - 1]
-                Id: 'item-' + i
-                MessageBody: JSON.stringify
-                    SceneBucket: kBucketName
-                    SceneKey: obj.jsonKey
-                    SceneIndex: i
-                    OutputBucket: kBucketName
-                    OutputKey: obj.key + '-' + pad(i, 4) + '.png'
-                    OutputQueueUrl: obj.resultQueue.QueueUrl
+        obj.work = for i in [0 .. obj.frameCount - 1]
+            Id: 'item-' + i
+            MessageBody: JSON.stringify
+                SceneBucket: kBucketName
+                SceneKey: obj.jsonKey
+                SceneIndex: i
+                OutputBucket: kBucketName
+                OutputKey: obj.key + '-' + pad(i, 4) + '.png'
+                OutputQueueUrl: obj.resultQueue.QueueUrl
 
     # Enqueue work items
     (obj, cb) ->

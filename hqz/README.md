@@ -38,7 +38,7 @@ To use the cluster rendering features or the `zen2json` converter, you'll need [
 
 Once you have Node.js, you can use its [npm](https://npmjs.org/) package manager to install the other dependencies:
 
-	npm install aws-sdk coffee-script async clarinet arc4rand
+	npm install aws-sdk coffee-script async async-cache arc4rand
 	
 Now the scripts mentioned below should have everything they need.
 
@@ -52,9 +52,9 @@ It's very CPU-intensive to render animations with `hqz`, so we include scripts t
 
 ### Animation Format
 
-Animations are represented as JSON files with an array of scene objects, one per frame. Each scene object is processed independently by a different instance of `hqz`.
+Animations are represented as text files with one JSON-encoded scene object per line. Each scene object is processed independently by a different instance of `hqz`.
 
-There is an example animation `examples/branches.coffee`. This is a script which programmatically animates a scene, and writes the resulting JSON array object to stdout.
+There is an example animation `examples/branches.coffee`. This is a script which programmatically animates a scene, and writes the resulting JSON lines to stdout.
 
 ### Environment
 
