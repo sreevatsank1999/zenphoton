@@ -138,6 +138,17 @@ class Watcher
         fileLog JSON.stringify msg
         @handleMessage msg, cb
 
+    resendMessage: (msg, cb) ->
+        # XXX: Kind of a huge hack!
+        sqs.createQueue
+            QueueName: "zenphoton-hqz-render-queue"
+            (error, data) =>
+                return cb error if error
+                sqs.sendMessage
+                    QueueUrl: data.QueueUrl
+                    MessageBody: JSON.stringify msg
+                    cb
+
     handleMessage: (msg, cb) ->
         @jobs[msg.SceneKey] = [] if not @jobs[msg.SceneKey]
         job = @jobs[msg.SceneKey]
@@ -147,6 +158,12 @@ class Watcher
         # Do we have a new URL to show?
         if msg.State == 'finished'
             log "http://#{ msg.OutputBucket }.s3.amazonaws.com/#{ msg.OutputKey }"
+
+        # Are we repairing failures?
+        if msg.State == 'failed' and process.argv[2] == '--retry-failed'
+            @resendMessage msg, (error, data) ->
+                return log "Error resending message: " + util.inspect error if error
+                log "Resent message: " + util.inspect msg
 
         # Update the state of this render job. Note that messages may arrive out of order,
         # so 'started' only has an effect if the frame hasn't already taken on a different state.    
