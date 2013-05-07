@@ -90,6 +90,8 @@ void ZRender::render(std::vector<unsigned char> &pixels)
          * which is a nice effect to have during animation.
          */
 
+        mQuadtree.build(mObjects);
+
         for (unsigned i = numRays; i; --i) {
             Sampler s(mSeed + i);
             traceRay(s);
@@ -310,35 +312,16 @@ bool ZRender::rayIntersect(IntersectionData &d, Sampler &s, const ViewportSample
      * Sample all objects in the scene that d.ray might hit. If we hit an object,
      * updates 'd' and returns true. If we don't, d.point will be clipped to the
      * edge of the image by rayIntersectBounds() and we return 'false'.
-     *
-     * Currently this scans all objects each time, since we don't have a scene partitioning
-     * data structure yet which can deal with randomly sampled coordinates.
      */
 
-    IntersectionData temp = d;
-    IntersectionData closest;
-    closest.distance = DBL_MAX;
-
-    for (unsigned i = 0, e = mObjects.Size(); i != e; ++i) {
-        const Value &object = mObjects[i];
-
-        if (d.object != &object
-            && ZObject::rayIntersect(object, temp, s)
-            && temp.distance < closest.distance)
-        {
-            closest = temp;
-            closest.object = &object;
-        }
+    if (mQuadtree.rayIntersect(d, s)) {
+        // Quadtree found an intersection
+        return true;
     }
 
-    if (closest.distance == DBL_MAX) {
-        // Nothing. Intersect with the viewport bounds.
-        rayIntersectBounds(d, v);
-        return false;
-    }
-
-    d = closest;
-    return true;
+    // Nothing. Intersect with the viewport bounds.
+    rayIntersectBounds(d, v);
+    return false;
 }
 
 void ZRender::rayIntersectBounds(IntersectionData &d, const ViewportSample &v)

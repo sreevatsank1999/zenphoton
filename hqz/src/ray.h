@@ -37,7 +37,8 @@ struct Vec2
     double x, y;
 };
 
-struct AABB {
+struct AABB
+{
     double left, top, right, bottom;
 };
 
@@ -163,10 +164,14 @@ struct Ray
     }
 };
 
-struct IntersectionData {
+struct IntersectionData
+{
     Ray ray;
+
     Vec2 point;
     Vec2 normal;
     double distance;
+
+    // IN: Previous object, to exclude.  OUT: Object we hit.
     const rapidjson::Value *object;
 };

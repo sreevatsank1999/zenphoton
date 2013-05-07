@@ -31,6 +31,7 @@
 #include "histogramimage.h"
 #include "ray.h"
 #include "sampler.h"
+#include "zquadtree.h"
 #include <sstream>
 #include <vector>
 
@@ -50,6 +51,7 @@ public:
 
 private:
     HistogramImage mImage;
+    ZQuadtree mQuadtree;
 
     const Value& mScene;
     const Value& mViewport;

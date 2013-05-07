@@ -2,7 +2,6 @@ BINS := hqz
 
 HQZ_OBJS := \
 	src/zrender.o \
-	src/zobject.o \
 	src/histogramimage.o \
 	src/spectrum.o \
 	src/main.o \

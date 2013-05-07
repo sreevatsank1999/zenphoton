@@ -46,7 +46,6 @@
 
 class Sampler {
 private:
-    double offset;
     PRNG mRandom;
 
 public:
