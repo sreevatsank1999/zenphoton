@@ -57,6 +57,7 @@ kRenderQueue = "zenphoton-hqz-render-queue"
 kResultQueue = "zenphoton-hqz-results"
 kBucketName = process.env.HQZ_BUCKET
 kChunkSizeLimit = 8 * 1024 * 1024
+kConcurrentUploads = 6
 
 pad = (str, length) ->
     str = '' + str
@@ -231,7 +232,7 @@ async.waterfall [
                     else
                         cb error
 
-        async.eachLimit obj.chunks, 2, uploadChunks, (error) ->
+        async.eachLimit obj.chunks, kConcurrentUploads, uploadChunks, (error) ->
             return cb error if error
             cb null, obj
 
