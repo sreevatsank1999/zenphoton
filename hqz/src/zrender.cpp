@@ -342,19 +342,16 @@ void ZRender::rayIntersectBounds(IntersectionData &d, const ViewportSample &v)
      * will equal d.ray.origin.
      */
 
-    // Viewport bounds
-    Vec2 topLeft = v.origin;
-    Vec2 topRight = { v.origin.x + v.size.x, v.origin.y };
-    Vec2 bottomLeft = { v.origin.x, v.origin.y + v.size.y };
-    Vec2 horizontal = { v.size.x, 0 };
-    Vec2 vertical = { 0, v.size.y };
+    double closest, furthest;
 
-    double dist, furthest = 0;
-    if (d.ray.intersectSegment(topLeft, horizontal, dist)) furthest = std::max(furthest, dist);
-    if (d.ray.intersectSegment(bottomLeft, horizontal, dist)) furthest = std::max(furthest, dist);
-    if (d.ray.intersectSegment(topLeft, vertical, dist)) furthest = std::max(furthest, dist);
-    if (d.ray.intersectSegment(topRight, vertical, dist)) furthest = std::max(furthest, dist);
+    AABB viewport = {
+        v.origin.x,
+        v.origin.y,
+        v.origin.x + v.size.x,
+        v.origin.y + v.size.y
+    };
 
+    d.ray.intersectAABB(viewport, closest, furthest);
     d.point = d.ray.pointAtDistance(furthest);
 }
 

@@ -27,6 +27,7 @@
 
 #pragma once
 #include <math.h>
+#include <float.h>
 #include <algorithm>
 #include "spectrum.h"
 
@@ -116,6 +117,49 @@ struct Ray
     {
         double alpha;
         return intersectSegment(s1, sD, distance, alpha);
+    }
+
+    bool intersectAABB(const AABB &box, double &closest, double &furthest) const
+    {
+        /*
+         * Ray to Axis-Aligned Bounding Box intersection.
+         * Always updates 'closest' and 'furthest'. Returns 'true' if any intersection happened.
+         */
+
+        Vec2 topLeft = { box.left, box.top };
+        Vec2 topRight = { box.right, box.top };
+        Vec2 bottomLeft = { box.left, box.bottom };
+        Vec2 horizontal = { box.right - box.left, 0 };
+        Vec2 vertical = { 0, box.bottom - box.top };
+
+        double dist;
+        bool success = false;
+
+        furthest = 0;
+        closest = DBL_MAX;
+
+        if (intersectSegment(topLeft, horizontal, dist)) {
+            success = true;
+            furthest = std::max(furthest, dist);
+            closest = std::min(closest, dist);
+        }
+        if (intersectSegment(bottomLeft, horizontal, dist)) {
+            success = true;
+            furthest = std::max(furthest, dist);
+            closest = std::min(closest, dist);
+        }
+        if (intersectSegment(topLeft, vertical, dist)) {
+            success = true;
+            furthest = std::max(furthest, dist);
+            closest = std::min(closest, dist);
+        }
+        if (intersectSegment(topRight, vertical, dist)) {
+            success = true;
+            furthest = std::max(furthest, dist);
+            closest = std::min(closest, dist);
+        }
+
+        return success;
     }
 };
 
