@@ -37,24 +37,32 @@
 class ZQuadtree {
 public:
     typedef rapidjson::Value Value;
-    typedef std::vector<const Value*> ValueArray;
+    typedef uint32_t Index;
+    typedef std::vector<Index> IndexArray;
 
     void build(const Value &objects);
     bool rayIntersect(IntersectionData &d, Sampler &s);
 
-private:
     struct Visitor;
+
+private:
 
     struct Node
     {
-        ValueArray objects;     // Objects that don't fully fit in either child
+        // Split threshold for number of objects in one node.
+        static const unsigned kSplitThreshold = 16;
+
+        IndexArray objects;     // Objects that don't fully fit in either child
         double split;           // Split location
         Node *children[2];      // [ < split, >= split ]
     };
 
-    Node root;
+    Node mRoot;
+    const Value *mObjects;
 
-    bool rayIntersect(IntersectionData &d, Sampler &s, Visitor &v);
+    bool rayIntersect(IntersectionData &d, uint32_t seed, Visitor &v);
+    void split(Visitor &v);
+    double splitPosition(Visitor &v);
 };
 
 
@@ -71,7 +79,7 @@ struct ZQuadtree::Visitor
     static Visitor root(ZQuadtree *tree)
     {
         Visitor v;
-        v.current = &tree->root;
+        v.current = &tree->mRoot;
         v.bounds.left = v.bounds.top = DBL_MIN;
         v.bounds.right = v.bounds.bottom = DBL_MAX;
         v.axisY = false;
@@ -114,25 +122,114 @@ struct ZQuadtree::Visitor
 
 inline void ZQuadtree::build(const Value &objects)
 {
-    // XXX: Putting all objects in the root node for now
+    /*
+     * Start out with all items in the root node
+     */
 
-    root.split = 0;
-    root.children[0] = 0;
-    root.children[1] = 0;
+    mRoot.split = 0;
+    mRoot.children[0] = 0;
+    mRoot.children[1] = 0;
 
-    root.objects.resize(objects.Size());
+    mObjects = &objects;
+    mRoot.objects.resize(objects.Size());
 
     for (unsigned i = 0; i < objects.Size(); ++i)
-        root.objects[i] = &objects[i];
+        mRoot.objects[i] = i;
+
+    /*
+     * Recursively visit and split each node
+     */
+
+    Visitor v = Visitor::root(this);
+    split(v);
+}
+
+inline void ZQuadtree::split(Visitor &v)
+{
+    Node &node = *v.current;
+
+    // Is this node already small enough?
+    if (node.objects.size() <= Node::kSplitThreshold)
+        return;
+
+    // New children
+    node.split = splitPosition(v);
+    node.children[0] = new Node();
+    node.children[1] = new Node();
+    Visitor first = v.first();
+    Visitor second = v.second();
+
+    /*
+     * Loop through the objects in this node, and move them to
+     * our children if possible.
+     */
+
+    unsigned in = 0;
+    unsigned out = 0;
+    unsigned end = node.objects.size();
+
+    for (; in != end; ++in) {
+        Index index = node.objects[in];
+        const Value &object = (*mObjects)[index];
+
+        AABB bounds;
+        ZObject::getBounds(object, bounds);
+
+        if (first.bounds.contains(bounds)) {
+            first.current->objects.push_back(index);
+
+        } else if (second.bounds.contains(bounds)) {
+            second.current->objects.push_back(index);
+
+        } else {
+            // Keep it here
+            node.objects[out++] = index;
+        }
+    }
+
+    node.objects.resize(out);
+
+    // Recursively split child nodes    
+    split(first);
+    split(second);
+}
+
+inline double ZQuadtree::splitPosition(Visitor &v)
+{
+    /*
+     * Choose a split position for node v.current.
+     * This quick-and-dirty approach uses the mean of each object's AABB.
+     */
+
+    double numerator = 0;
+    int denominator = 0;
+
+    Node &node = *v.current;
+    for (IndexArray::const_iterator i = node.objects.begin(), e = node.objects.end(); i != e; ++i)
+    { 
+        Index index = *i;
+        const Value &object = (*mObjects)[index];
+
+        AABB bounds;
+        ZObject::getBounds(object, bounds);
+
+        denominator += 2;
+        if (v.axisY)
+            numerator += bounds.top + bounds.bottom;
+        else
+            numerator += bounds.left + bounds.right;
+    }
+
+    return numerator / denominator;
 }
 
 inline bool ZQuadtree::rayIntersect(IntersectionData &d, Sampler &s)
 {
     Visitor v = Visitor::root(this);
-    return rayIntersect(d, s, v);
+    return rayIntersect(d, s.uniform32(), v);
 }
 
-inline bool ZQuadtree::rayIntersect(IntersectionData &d, Sampler &s, Visitor &v)
+inline bool ZQuadtree::rayIntersect(IntersectionData &d, uint32_t seed, Visitor &v)
 {
     // Iterate over some objects, keeping track of the closest intersection
     IntersectionData temp = d;
@@ -148,17 +245,44 @@ inline bool ZQuadtree::rayIntersect(IntersectionData &d, Sampler &s, Visitor &v)
     double secondClosest, secondFurthest;
     bool secondHit = second && d.ray.intersectAABB(second.bounds, secondClosest, secondFurthest);
 
+    // Try local objects. These could be leaves in the tree, or larger objects that
+    // don't fully fit inside a subtree's AABB.
+
+    Node &node = *v.current;
+    for (IndexArray::const_iterator i = node.objects.begin(), e = node.objects.end(); i != e; ++i)
+    { 
+        Index index = *i;
+        const Value &object = (*mObjects)[index];
+
+        if (d.object == &object)
+            continue;
+
+        /*
+         * Create a nested per-object sampler which allows us to test objects
+         * in an arbitrary order without affecting the stream of values produced by
+         * the parent sampler. This is vital to ensure we don't disturb the course of
+         * a scene's rays when arbitrary quadtree split boundaries change from frame to frame.
+         */
+        Sampler sampler(seed + index);
+
+        if (ZObject::rayIntersect(object, temp, sampler) && temp.distance < closest.distance) {
+            closest = temp;
+            closest.object = &object;
+            result = true;
+        }
+    }
+
     // Try the closest child first. Maybe we can skip testing the other side.
     if (firstClosest < secondClosest) {
 
         if (firstHit && firstClosest < closest.distance &&
-            rayIntersect(temp, s, first) && temp.distance < closest.distance) {
+            rayIntersect(temp, seed, first) && temp.distance < closest.distance) {
             closest = temp;
             result = true;
         }
 
         if (secondHit && secondClosest < closest.distance &&
-            rayIntersect(temp, s, second) && temp.distance < closest.distance) {
+            rayIntersect(temp, seed, second) && temp.distance < closest.distance) {
             closest = temp;
             result = true;
         }
@@ -166,36 +290,20 @@ inline bool ZQuadtree::rayIntersect(IntersectionData &d, Sampler &s, Visitor &v)
     } else {
 
         if (secondHit && secondClosest < closest.distance &&
-            rayIntersect(temp, s, second) && temp.distance < closest.distance) {
+            rayIntersect(temp, seed, second) && temp.distance < closest.distance) {
             closest = temp;
             result = true;
         }
 
         if (firstHit && firstClosest < closest.distance &&
-            rayIntersect(temp, s, first) && temp.distance < closest.distance) {
+            rayIntersect(temp, seed, first) && temp.distance < closest.distance) {
             closest = temp;
             result = true;
         }
     }
 
-    // Now try local objects. These could be leaves in the tree, or larger objects that
-    // don't fully fit inside a subtree's AABB.
-
-    Node &node = *v.current;
-    for (ValueArray::const_iterator i = node.objects.begin(), e = node.objects.end(); i != e; ++i)
-    { 
-        const Value &object = **i;
-
-        if (d.object != &object
-            && ZObject::rayIntersect(object, temp, s)
-            && temp.distance < closest.distance)
-        {
-            closest = temp;
-            closest.object = &object;
-            result = true;
-        }
+    if (result) {
+        d = closest;
     }
-
-    d = closest;
     return result;
 }

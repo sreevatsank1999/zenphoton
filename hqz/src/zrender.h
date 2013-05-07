@@ -50,6 +50,8 @@ public:
     unsigned height() const { return mImage.height(); }
 
 private:
+    static const uint32_t kDebugQuadtree = 1 << 0;
+
     HistogramImage mImage;
     ZQuadtree mQuadtree;
 
@@ -61,6 +63,7 @@ private:
 
     uint32_t mSeed;
     double mLightPower;
+    uint32_t mDebug;
     std::ostringstream mError;
 
     struct ViewportSample {
@@ -97,4 +100,7 @@ private:
     // Object sampling
     bool rayIntersect(IntersectionData &d, Sampler &s, const ViewportSample &v);
     void rayIntersectBounds(IntersectionData &d, const ViewportSample &v);
+
+    // Debugging
+    void renderDebugQuadtree(ZQuadtree::Visitor &v);
 };

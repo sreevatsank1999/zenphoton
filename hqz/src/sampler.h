@@ -65,6 +65,10 @@ public:
         mRandom.seed(seed);
     }
 
+    uint32_t uniform32() {
+        return mRandom.uniform32();
+    }
+
     double uniform() {
         return mRandom.uniform();
     }
@@ -127,5 +131,6 @@ public:
         }
 
         return result;
-    }        
+    }
+
 };

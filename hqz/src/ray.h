@@ -40,6 +40,14 @@ struct Vec2
 struct AABB
 {
     double left, top, right, bottom;
+
+    bool contains(const AABB &other)
+    {
+        return other.left >= left &&
+               other.right <= right &&
+               other.top >= top &&
+               other.bottom <= bottom;
+    }
 };
 
 struct Ray

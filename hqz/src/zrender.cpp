@@ -38,8 +38,9 @@ ZRender::ZRender(const Value &scene)
     mMaterials(scene["materials"]),
     mLightPower(0.0)
 {
-    // Seed the PRNG. (Zero by default)
+    // Optional iteger values
     mSeed = checkInteger(mScene["seed"], "seed");
+    mDebug = checkInteger(mScene["debug"], "debug");
 
     // Integer resolution values
     const Value& resolution = mScene["resolution"];
@@ -82,16 +83,27 @@ ZRender::ZRender(const Value &scene)
 
 void ZRender::render(std::vector<unsigned char> &pixels)
 {
+    mQuadtree.build(mObjects);
+
+    /*
+     * Debug flags
+     */
+
+    if (mDebug & kDebugQuadtree) {
+        ZQuadtree::Visitor v = ZQuadtree::Visitor::root(&mQuadtree);
+        renderDebugQuadtree(v);
+    }
+
+    /*
+     * Trace rays!
+     *
+     * Note that each ray is seeded separately, so that rays are independent events
+     * with respect to the PRNG sequence. This helps keep our noise pattern stationary,
+     * which is a nice effect to have during animation.
+     */
+
     int numRays = checkInteger(mScene["rays"], "rays");
     if (numRays > 0) {
-        /*
-         * Note that each ray is seeded separately, so that rays are independent events
-         * with respect to the PRNG sequence. This helps keep our noise pattern stationary,
-         * which is a nice effect to have during animation.
-         */
-
-        mQuadtree.build(mObjects);
-
         for (unsigned i = numRays; i; --i) {
             Sampler s(mSeed + i);
             traceRay(s);
@@ -405,4 +417,35 @@ bool ZRender::rayMaterialOutcome(IntersectionData &d, Sampler &s, const Value &o
 
     // Unknown outcome
     return false;
+}
+
+void ZRender::renderDebugQuadtree(ZQuadtree::Visitor &v)
+{
+    /*
+     * For debugging, draw an outline around each quadtree AABB.
+     */
+
+    ViewportSample vp;
+    Sampler s(mSeed);
+    initViewport(s, vp);
+
+    Color c = { 0x7FFFFFFF, 0x7FFFFFFF, 0 };
+    double w = width();
+    double h = height();
+
+    double left   = vp.xScale(v.bounds.left,   w);
+    double top    = vp.yScale(v.bounds.top,    h);
+    double right  = vp.xScale(v.bounds.right,  w);
+    double bottom = vp.yScale(v.bounds.bottom, h);
+
+    mImage.line(c, left, top, right, top);
+    mImage.line(c, right, top, right, bottom);
+    mImage.line(c, right, bottom, left, bottom);
+    mImage.line(c, left, bottom, left, top);
+
+    ZQuadtree::Visitor first = v.first();
+    if (first) renderDebugQuadtree(first);
+
+    ZQuadtree::Visitor second = v.second();
+    if (second) renderDebugQuadtree(second);
 }
