@@ -28,7 +28,7 @@ module.exports = function (options, func)
     var flag = false;
     var xp, yp, ap;
 
-    do {
+    while (1) {
 
         // Sample the function at two points
         var xy0 = func(t);
@@ -57,10 +57,12 @@ module.exports = function (options, func)
         // that should approximate the requested resolution in scene units.
         var adv = resolution / dl;
 
-        // Limits on how quickly or slowly we can advance
-        t += Math.min(0.1, Math.max(0.000001, adv));
+        // Did we sample the function at 1?
+        if (t >= 1.0)
+            return results;
 
-    } while (t <= 1.0);
+        // Limits on how quickly or slowly we can advance. Clamp to 1.0
+        t = Math.min(1.0, t + Math.min(0.1, Math.max(0.000001, adv)));
 
-    return results;
+    }
 }
