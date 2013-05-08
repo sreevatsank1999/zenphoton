@@ -195,6 +195,7 @@ async.waterfall [
 
         # Compress and upload all chunks
         uploadCounter = 0
+
         uploadChunks = (chunk, cb) ->
             # Is this chunk already on S3?
             s3.headObject
@@ -203,11 +204,13 @@ async.waterfall [
                 (error, data) ->
                     return cb error if error and error.code != 'NotFound'
 
-                    uploadCounter++
-                    prefix = "    [#{uploadCounter} / #{obj.chunks.length}] chunk #{chunk.name}"
+                    # Increment the counter right before use, so counts appear in-order in the log
+                    logPrefix = () ->
+                        uploadCounter++
+                        "    [#{uploadCounter} / #{obj.chunks.length}] chunk #{chunk.name}"
 
                     if not error
-                        console.log "#{prefix} already uploaded"
+                        console.log "#{logPrefix()} already uploaded"
                         return cb()
 
                     # Read and gzip just this section of the file
@@ -222,8 +225,7 @@ async.waterfall [
                     gz.on 'data', (chunk) -> chunks.push chunk
                     gz.on 'end', () ->
                         data = bufferConcat chunks
-                        uploadCounter++
-                        console.log "#{prefix} uploading #{data.length} bytes"
+                        console.log "#{logPrefix()} uploading #{data.length} bytes"
 
                         s3.putObject
                             Bucket: kBucketName
