@@ -344,8 +344,6 @@ void ZRender::rayIntersectBounds(IntersectionData &d, const ViewportSample &v)
      * will equal d.ray.origin.
      */
 
-    double closest, furthest;
-
     AABB viewport = {
         v.origin.x,
         v.origin.y,
@@ -353,8 +351,7 @@ void ZRender::rayIntersectBounds(IntersectionData &d, const ViewportSample &v)
         v.origin.y + v.size.y
     };
 
-    d.ray.intersectAABB(viewport, closest, furthest);
-    d.point = d.ray.pointAtDistance(furthest);
+    d.point = d.ray.pointAtDistance(d.ray.intersectFurthestAABB(viewport));
 }
 
 bool ZRender::rayMaterial(IntersectionData &d, Sampler &s)

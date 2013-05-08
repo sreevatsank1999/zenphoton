@@ -247,12 +247,12 @@ inline bool ZQuadtree::rayIntersect(IntersectionData &d, Sampler &s, Visitor &v)
     bool result = false;
 
     Visitor first = v.first();
-    double firstClosest = 0, firstFurthest = 0;
-    bool firstHit = first && d.ray.intersectAABB(first.bounds, firstClosest, firstFurthest);
+    double firstClosest = 0;
+    bool firstHit = first && d.ray.intersectAABB(first.bounds, firstClosest);
 
     Visitor second = v.second();
-    double secondClosest = 0, secondFurthest = 0;
-    bool secondHit = second && d.ray.intersectAABB(second.bounds, secondClosest, secondFurthest);
+    double secondClosest = 0;
+    bool secondHit = second && d.ray.intersectAABB(second.bounds, secondClosest);
 
     // Try local objects. These could be leaves in the tree, or larger objects that
     // don't fully fit inside a subtree's AABB.

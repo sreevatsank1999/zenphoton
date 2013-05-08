@@ -41,12 +41,18 @@ struct AABB
 {
     double left, top, right, bottom;
 
-    bool contains(const AABB &other)
+    bool contains(const AABB &other) const
     {
         return other.left >= left &&
                other.right <= right &&
                other.top >= top &&
                other.bottom <= bottom;
+    }
+
+    bool contains(Vec2 v) const
+    {
+        return v.x >= left && v.x <= right &&
+               v.y >= top && v.y <= bottom;
     }
 };
 
@@ -128,47 +134,103 @@ struct Ray
         return intersectSegment(s1, sD, distance, alpha);
     }
 
-    bool intersectAABB(const AABB &box, double &closest, double &furthest) const
+    bool intersectAABB(const AABB &box, double &closest) const
     {
         /*
          * Ray to Axis-Aligned Bounding Box intersection.
-         * Always updates 'closest' and 'furthest'. Returns 'true' if any intersection happened.
+         *
+         * If the ray begins within 'box' and exits it, returns true with closest==0.
+         * If the ray begins outside the box and never touches it, returns false with closest==FLT_MAX.
+         * If the ray begins outside the box and intersects it, returns true with 'closest' set to the
+         * distance between the origin and the closest part of the box.
          */
 
-        Vec2 topLeft = { box.left, box.top };
-        Vec2 topRight = { box.right, box.top };
-        Vec2 bottomLeft = { box.left, box.bottom };
-        Vec2 horizontal = { box.right - box.left, 0 };
-        Vec2 vertical = { 0, box.bottom - box.top };
+        if (box.contains(origin)) {
+            closest = 0;
+            return true;
+        }
+
+        closest = FLT_MAX;
+
+        /*
+         * Quickly rule out rays that can never touch this box
+         */
+
+        if (origin.x < box.left   && direction.x <= 0) return false;
+        if (origin.x > box.right  && direction.x >= 0) return false;
+        if (origin.y < box.top    && direction.y <= 0) return false;
+        if (origin.y > box.bottom && direction.y >= 0) return false;
+
+        /*
+         * Now do intersection tests with two perpendicular sides. This
+         * tells us whether the ray ever enters/exits the box. If the first
+         * two tests fail, we know the ray never touches the box. Otherwise,
+         * do the other two tests and get an accurate closest distance.
+         */
 
         double dist;
         bool success = false;
-
-        furthest = 0;
-        closest = FLT_MAX;
+        Vec2 topLeft = { box.left, box.top };
+        Vec2 horizontal = { box.right - box.left, 0 };
+        Vec2 vertical = { 0, box.bottom - box.top };
 
         if (intersectSegment(topLeft, horizontal, dist)) {
             success = true;
-            furthest = std::max(furthest, dist);
-            closest = std::min(closest, dist);
-        }
-        if (intersectSegment(bottomLeft, horizontal, dist)) {
-            success = true;
-            furthest = std::max(furthest, dist);
             closest = std::min(closest, dist);
         }
         if (intersectSegment(topLeft, vertical, dist)) {
             success = true;
-            furthest = std::max(furthest, dist);
-            closest = std::min(closest, dist);
-        }
-        if (intersectSegment(topRight, vertical, dist)) {
-            success = true;
-            furthest = std::max(furthest, dist);
             closest = std::min(closest, dist);
         }
 
-        return success;
+        if (success) {
+            Vec2 topRight = { box.right, box.top };
+            Vec2 bottomLeft = { box.left, box.bottom };
+
+            if (intersectSegment(bottomLeft, horizontal, dist)) {
+                closest = std::min(closest, dist);
+            }
+            if (intersectSegment(topRight, vertical, dist)) {
+                closest = std::min(closest, dist);
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    double intersectFurthestAABB(const AABB &box) const
+    {
+        /*
+         * If the ray intersects an AABB, return the distance to the *furthest* point
+         * where they intersect. If not, returns zero. If the ray is inside the AABB,
+         * we return the distance to the point where it exits the AABB.
+         */
+
+        double dist;
+        double furthest = 0;
+
+        Vec2 topLeft = { box.left, box.top };
+        Vec2 horizontal = { box.right - box.left, 0 };
+        Vec2 vertical = { 0, box.bottom - box.top };
+        Vec2 topRight = { box.right, box.top };
+        Vec2 bottomLeft = { box.left, box.bottom };
+
+        if (intersectSegment(topLeft, horizontal, dist)) {
+            furthest = std::max(furthest, dist);
+        }
+        if (intersectSegment(topLeft, vertical, dist)) {
+            furthest = std::max(furthest, dist);
+        }
+        if (intersectSegment(bottomLeft, horizontal, dist)) {
+            furthest = std::max(furthest, dist);
+        }
+        if (intersectSegment(topRight, vertical, dist)) {
+            furthest = std::max(furthest, dist);
+        }
+
+        return furthest;
     }
 };
 
