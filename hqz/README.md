@@ -113,8 +113,15 @@ The JSON input file is an object with a number of mandatory members:
 	* A list of all materials in the scene. (Details below)
 * **"exposure"**: *float*
     * Sets the exposure (brightness) of the rendering. Units are an arbitrary logarithmic scale which matches [zenphoton.com](http://zenphoton.com)'s exposure slider over the range [0,1].
+
+Stopping conditions:
+
+One or more of these must be included. If multiple stopping conditions are listed, the rendering stops when any of them are hit.
+
 * **"rays"**: *integer*
     * Number of rays to cast. Larger numbers will take more time to render, but result in smoother images. Lower numbers will be faster, but a "grain" will be visible in the image as you can see the individual rays.
+* **"timelimit"**: *integer*
+    * Maximum number of seconds to render for. The renderer will run batches of rays, and periodically check whether the elapsed time has hit this limit.
 
 Optional members:
 

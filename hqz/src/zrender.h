@@ -64,6 +64,9 @@ private:
     uint32_t mSeed;
     double mLightPower;
     uint32_t mDebug;
+    double mRayLimit;
+    double mTimeLimit;
+
     std::ostringstream mError;
 
     struct ViewportSample {
@@ -82,11 +85,14 @@ private:
     // Data model
     bool checkTuple(const Value &v, const char *noun, unsigned expected);
     int checkInteger(const Value &v, const char *noun);
+    double checkNumber(const Value &v, const char *noun);
     bool checkMaterialID(const Value &v);
     bool checkMaterialValue(int index);
 
     // Raytracer entry point
     void traceRay(Sampler &s);
+    void traceRayBatch(uint32_t seed, uint32_t count);
+    uint64_t traceRays();
 
     // Light sampling
     const Value &chooseLight(Sampler &s);

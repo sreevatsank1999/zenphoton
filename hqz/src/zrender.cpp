@@ -26,6 +26,7 @@
  */
 
 #include <float.h>
+#include <time.h>
 #include "zrender.h"
 #include "zobject.h"
 
@@ -47,6 +48,13 @@ ZRender::ZRender(const Value &scene)
     if (checkTuple(resolution, "resolution", 2)) {
         mImage.resize(checkInteger(resolution[0u], "resolution[0]"),
                       checkInteger(resolution[1], "resolution[1]"));
+    }
+
+    // Check stopping conditions
+    mRayLimit = checkNumber(mScene["rays"], "rays");
+    mTimeLimit = checkNumber(mScene["timelimit"], "timelimit");
+    if (mRayLimit <= 0.0 && mTimeLimit <= 0.0) {
+        mError << "No stopping conditions set. Expected a ray limit and/or time limit.\n";
     }
 
     // Other cached tuples
@@ -96,27 +104,15 @@ void ZRender::render(std::vector<unsigned char> &pixels)
 
     /*
      * Trace rays!
-     *
-     * Note that each ray is seeded separately, so that rays are independent events
-     * with respect to the PRNG sequence. This helps keep our noise pattern stationary,
-     * which is a nice effect to have during animation.
      */
 
-    int numRays = checkInteger(mScene["rays"], "rays");
-    if (numRays > 0) {
-        for (unsigned i = numRays; i; --i) {
-            Sampler s(mSeed + i);
-            traceRay(s);
-        }
-    }
+    uint64_t numRays = traceRays();
 
     /*
      * Optional gamma correction. Defaults to linear, for compatibility with zenphoton.
      */
 
-    double gamma = 0.0;
-    if (mScene["gamma"].IsNumber())
-        gamma = mScene["gamma"].GetDouble();
+    double gamma = checkNumber(mScene["gamma"], "gamma");
     if (gamma <= 0.0)
         gamma = 1.0;
 
@@ -148,6 +144,23 @@ int ZRender::checkInteger(const Value &v, const char *noun)
         return v.GetInt();
 
     mError << "'" << noun << "' expected an integer value\n";
+    return 0;
+}
+
+double ZRender::checkNumber(const Value &v, const char *noun)
+{
+    /*
+     * Convenience method to evaluate a number. If it's Null, returns zero quietly.
+     * If it's a valid number, returns it quietly. Otherwise returns zero and logs an error.
+     */
+
+    if (v.IsNull())
+        return 0;
+
+    if (v.IsNumber())
+        return v.GetDouble();
+
+    mError << "'" << noun << "' expected a number value\n";
     return 0;
 }
 
@@ -229,6 +242,61 @@ const ZRender::Value& ZRender::chooseLight(Sampler &s)
 
     // Default, last light.
     return mLights[last];
+}
+
+uint64_t ZRender::traceRays()
+{
+    /*
+     * Keep tracing rays until a stopping condition is hit.
+     * Returns the total number of rays traced.
+     */
+
+    uint64_t rayCount = 0;
+    uint32_t seed = mSeed;
+    double startTime = (double)time(0);
+
+    while (1) {
+        // Minimum frequency for checking stopping conditions
+        int batch = 1000;
+
+        if (mRayLimit) {
+            // Set batch size according to remaining rays.
+            batch = std::min<double>(batch, mRayLimit - rayCount);
+            if (batch <= 0)
+                break;
+        }
+
+        if (mTimeLimit) {
+            // Check time limit
+            double now = (double)time(0);
+            if (now > startTime + mTimeLimit)
+                break;
+        }
+
+        traceRayBatch(seed, batch);
+
+        seed += batch;
+        rayCount += batch;
+    }
+
+    return rayCount;
+}
+
+void ZRender::traceRayBatch(uint32_t seed, uint32_t count)
+{
+    /*
+     * Trace a batch of rays, starting with ray number "start", and
+     * tracing "count" rays.
+     *
+     * Note that each ray is seeded separately, so that rays are independent events
+     * with respect to the PRNG sequence. This helps keep our noise pattern stationary,
+     * which is a nice effect to have during animation.
+     */
+
+    while (count--) {
+        Sampler s(seed++);
+        traceRay(s);
+    }
 }
 
 void ZRender::traceRay(Sampler &s)
