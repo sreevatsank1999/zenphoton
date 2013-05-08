@@ -73,10 +73,15 @@ int main(int argc, char **argv)
 
     ZRender zr(scene);
     std::vector<unsigned char> pixels;
+    if (zr.hasError()) {
+        fprintf(stderr, "Scene errors:\n%s", zr.errorText());
+        return 5;
+    }
+
     zr.render(pixels);
     if (zr.hasError()) {
         fprintf(stderr, "Renderer errors:\n%s", zr.errorText());
-        return 5;
+        return 7;
     }
 
     std::vector<unsigned char> png;
