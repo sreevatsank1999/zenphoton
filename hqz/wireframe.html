@@ -1,7 +1,23 @@
 <!DOCTYPE html>
 <html><head><meta charset='utf-8' />
 <title>wireframe hqz preview</title>
+<script type='text/javascript'>
+    /* http://www.trajanmcgill.com/stronglytyped/post/2013/03/23/A-More-Robust-requestAnimationFrame-Polyfill */
+    /*! requestAnimationFrame.js */
+    (function(){"use strict";function e(e){var t=a;return a++,l[t]=e,c++,null===r&&(r=
+    window.setTimeout(i,Math.max(0,16-((new Date).getTime()-w)))),t}function t(e){e>=s
+    &&l.hasOwnProperty(e)?n(l,e):o.hasOwnProperty(e)&&n(o,e)}function n(e,t){delete e[
+    t],c--,1>c&&null!==r&&(window.clearTimeout(r),r=null)}function i(){var e,t;r=null,w
+    =(new Date).getTime(),o=l,l={},s=a;for(e in o)if(o.hasOwnProperty(e)){t=o[e],delete
+    o[e],c--;try{t(w)}catch(n){}}}var u,a=0,l={},o={},r=null,w=0,c=0,s=0,m=window,f=
+    "AnimationFrame",h="cancel"+f,d="request"+f,q=["webkitCancel","webkitCancelRequest",
+    "mozCancel"],b=["webkitRequest","webkitRequest","mozRequest"];for(u=0;!m[h]&&q.length
+    >u;u++)m[h]=m[q[u]+f],m[d]=m[b[u]+f];m[h]||(m[h]=t,m[d]=e)})();
+</script>
 <script type='text/coffeescript'>
+
+# This CoffeeScript is compiled in the browser by the compiler we include below.
+# This is a convenience so that this file runs right out of git, without any build steps.
 
 @status = 'Drop .json file here'
 @aspect = 16/9
