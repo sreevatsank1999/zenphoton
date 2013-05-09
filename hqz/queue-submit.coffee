@@ -58,6 +58,7 @@ kResultQueue = "zenphoton-hqz-results"
 kBucketName = process.env.HQZ_BUCKET
 kChunkSizeLimit = 8 * 1024 * 1024
 kConcurrentUploads = 6
+kIndent = "    "
 
 pad = (str, length) ->
     str = '' + str
@@ -136,9 +137,9 @@ async.waterfall [
                     frames-- if tail
 
                     if frames.length == 1
-                        console.log "    found a single frame"
+                        console.log "#{kIndent}found a single frame"
                     else
-                        console.log "    found animation with #{ frames } frames"
+                        console.log "#{kIndent}found animation with #{frames} frames"
 
                     # frameOffsets always has a beginning and end for each frame.
                     frameOffsets.push offset
@@ -207,7 +208,7 @@ async.waterfall [
                     # Increment the counter right before use, so counts appear in-order in the log
                     logPrefix = () ->
                         uploadCounter++
-                        "    [#{uploadCounter} / #{obj.chunks.length}] chunk #{chunk.name}"
+                        "#{kIndent}[#{uploadCounter} / #{obj.chunks.length}] chunk #{chunk.name}"
 
                     if not error
                         console.log "#{logPrefix()} already uploaded"
@@ -225,14 +226,19 @@ async.waterfall [
                     gz.on 'data', (chunk) -> chunks.push chunk
                     gz.on 'end', () ->
                         data = bufferConcat chunks
-                        console.log "#{logPrefix()} uploading #{data.length} bytes"
-
                         s3.putObject
                             Bucket: kBucketName
                             ContentType: 'application/json'
                             Key: chunk.name
                             Body: data
-                            (error, data) -> cb error
+                            (error, data) ->
+                                console.log "#{logPrefix()} uploaded #{data.length} bytes" if !error
+                                cb error
+
+        if obj.chunks.length > 1
+            console.log "Uploading scene data in #{obj.chunks.length} chunks..."
+        else
+            console.log "Uploading scene data..."
 
         async.eachLimit obj.chunks, kConcurrentUploads, uploadChunks, (error) ->
             return cb error if error
