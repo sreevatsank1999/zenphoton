@@ -30,9 +30,27 @@
 #include "rapidjson/filestream.h"
 #include "lodepng.h"
 #include "zrender.h"
+#include <signal.h>
+#include <unistd.h>
 #include <cstdio>
 #include <vector>
 
+static ZRender *interruptibleRenderer = 0;
+
+void handleSigint(int)
+{
+    static const char message[] = "\nInterrupted! Finishing up...\n";
+
+    if (interruptibleRenderer) {
+        // Immediately write a message to stderr.
+        // Stdio probably not signal-safe, but syscalls should be...
+        write(2, message, sizeof message);
+
+        // Tell the renderer to finish up!
+        interruptibleRenderer->interrupt();
+        interruptibleRenderer = 0;
+    }
+}
 
 int main(int argc, char **argv)
 {
@@ -78,7 +96,12 @@ int main(int argc, char **argv)
         return 5;
     }
 
+    // Render, and allow Ctrl-C to interrupt at any time.
+    interruptibleRenderer = &zr;
+    signal(SIGINT, handleSigint);
     zr.render(pixels);
+    interruptibleRenderer = 0;
+
     if (zr.hasError()) {
         fprintf(stderr, "Renderer errors:\n%s", zr.errorText());
         return 7;

@@ -43,6 +43,7 @@ public:
     ZRender(const Value &scene);
 
     void render(std::vector<unsigned char> &pixels);
+    void interrupt();
 
     const char *errorText() const { return mError.str().c_str(); }
     bool hasError() const { return !mError.str().empty(); }

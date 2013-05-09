@@ -244,6 +244,16 @@ const ZRender::Value& ZRender::chooseLight(Sampler &s)
     return mLights[last];
 }
 
+void ZRender::interrupt()
+{
+    /*
+     * Interrupt traceRays() in progress. The render will return as
+     * soon as the next batch of rays finishes and the histogram is rendered.
+     */
+
+    mRayLimit = -1;
+}
+
 uint64_t ZRender::traceRays()
 {
     /*
