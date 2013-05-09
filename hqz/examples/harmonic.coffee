@@ -42,9 +42,6 @@ zoomViewport = (width, height, focusX, focusY, zoom) ->
 
     [ left, top, right - left, bottom - top ]
 
-focusX = 1920 * 0.8
-focusY = 1080/3
-
 scene = (frame) ->
     resolution: [1920, 1080]
     timelimit: 60 * 60
@@ -53,12 +50,12 @@ scene = (frame) ->
 
     exposure: 0.7
     gamma: 1.8
-    viewport: zoomViewport 1920, 1080, 1920 * 0.8, 1080/3, frame * 0.001
+    viewport: zoomViewport 1920, 1080, 1920*0.7, 1080*0.4, frame * 0.001
 
     lights: [
         [0.75, 1920/2, 1080/2, [0, -180], 1200, [0, 360], 480]
         [0.2, 1920/2, 1080/2, [0, -180], 1200, [0, 360], 0]
-        [0.1, focusX, focusY, [0, 380], [0, 15], [0, 360], 590]
+        [0.1, 1920*0.8, 1080/3, [0, 380], [0, 15], [0, 360], 590]
     ]
 
     objects: [].concat [],
@@ -66,16 +63,16 @@ scene = (frame) ->
         harmonicOscillator frame,
             material: 0
             seed: 's'
-            x0: 1920 * 0.4
-            y0: 1080 * 2/3
+            x0: 1920*0.4
+            y0: 1080*2/3
             radius: 500
             modulationDepth: 0.25
 
         harmonicOscillator frame,
             material: 1    
             seed: 't'
-            x0: focusX
-            y0: focusY
+            x0: 1920*0.8
+            y0: 1080/3
             radius: 120
             modulationDepth: 0.25
 
@@ -83,9 +80,8 @@ scene = (frame) ->
         # 0. Light catching. Lots of internal reflection.
         [ [0.1, "d"], [0.8, "r"] ]
 
-        # 1. Light emitting. Diffuse the light, don't reflect too much or we'll amplify
-        #    nonuniformities in our circle more than I'd like.
-        [ [1.0, "d"] ]
+        # 1. Light emitting. Diffuse the light, reflect only a little.
+        [ [0.99, "d"], [0.01, "r"] ]
     ]
 
 console.log JSON.stringify scene i for i in [0 .. 600]
