@@ -48,6 +48,10 @@ kSpotPrice      = "0.10"            # Maximum price per instance-hour
 kImageId        = "ami-2efa9d47"    # Ubuntu 12.04 LTS, x64, us-east-1
 kInstanceType   = "c1.xlarge"       # High-CPU instance
 
+# Number of instances that will stay around to wait for the queue to fully empty.
+# The rest of them will start exiting when they're less than 50% utilized.
+kMaxStickyInstances = 1
+
 kBucketName = process.env.HQZ_BUCKET
 
 kInstanceTags   = [ {
@@ -72,7 +76,7 @@ if process.argv.length != 3
 numInstances = process.argv[2] | 0
 process.exit 0 if numInstances <= 0
 
-numStickyInstances = Math.min numInstances, 2
+numStickyInstances = Math.min numInstances, kMaxStickyInstances
 numBurstInstances = Math.max 0, numInstances - numStickyInstances
 
 script = (minCPU) -> 
