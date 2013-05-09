@@ -29,7 +29,15 @@ You can build it by just running `make` on the command line. This should work on
 	…
 	$ ./hqz example.json example.png
 	$ open example.png
-	
+
+
+Wireframe Preview
+-----------------
+
+Also included is a quick-and-dirty HTML5 application to preview images and animations in the JSON format used by `hqz`. All you need is a modern web browser. It works in Safari and Firefox, but I've found it to run smoothest on Chrome.
+
+To use it, just point your browser of choice to the included `wireframe.html` file. No web server necessary. Using HTML5 drag-and-drop, you can drag a .json file to the web app and it can parse the file client-side without sending anything over the network.
+
 
 Node.js
 -------
@@ -170,6 +178,10 @@ Scene objects are things that interact with rays once they've been emitted. Vari
     * Normal at (x0 + dx, y0 + dy) is (cos(a0 + da), sin(a0 + da)).
     * Angles are in degrees.
 	* Coordinates are all sampled.
+    * Using a delta notation for normal angles rather than start/end angles can be convenient when using random variables.
+    * Delta notation also has the advantage of uniquely specifying exactly one of the infinite different paths you can take between two specific points along a circle.
+    * Programs that produce objects of this type typically want to write this delta to take the shortest path along the circle, even if it results in angles outside the range [0, 2pi].
+    * For sample code to use this object type to represent arbitrary mathematical curves, see `examples/plot.js`
 * Etc.
 	* Other values are reserved for future use.
 
