@@ -231,7 +231,7 @@ async.waterfall [
                             ContentType: 'application/json'
                             Key: chunk.name
                             Body: data
-                            (error, data) ->
+                            (error) ->
                                 console.log "#{logPrefix()} uploaded #{data.length} bytes" if !error
                                 cb error
 
