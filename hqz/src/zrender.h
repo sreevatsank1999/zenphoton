@@ -101,7 +101,6 @@ private:
 
     // Material sampling
     bool rayMaterial(IntersectionData &d, Sampler &s);
-    bool rayMaterialOutcome(IntersectionData &d, Sampler &s, const Value &outcome);
 
     // Object sampling
     bool rayIntersect(IntersectionData &d, Sampler &s, const ViewportSample &v);

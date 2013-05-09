@@ -37,8 +37,7 @@
  # and how to compute their AABB.
  */
 
-class ZObject {
-public:
+struct ZObject {
     typedef rapidjson::Value Value;
 
     static bool rayIntersect(const Value &object, IntersectionData &d, Sampler &s);

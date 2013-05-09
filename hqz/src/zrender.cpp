@@ -28,7 +28,7 @@
 #include <float.h>
 #include <time.h>
 #include "zrender.h"
-#include "zobject.h"
+#include "zmaterial.h"
 
 
 ZRender::ZRender(const Value &scene)
@@ -442,45 +442,10 @@ bool ZRender::rayMaterial(IntersectionData &d, Sampler &s)
         const Value& outcome = material[i];
         sum += outcome[0u].GetDouble();
         if (r <= sum)
-            return rayMaterialOutcome(d, s, outcome);
+            return ZMaterial::rayOutcome(outcome, d, s);
     }
 
     // Absorbed
-    return false;
-}
-
-bool ZRender::rayMaterialOutcome(IntersectionData &d, Sampler &s, const Value &outcome)
-{
-    // Check for 2-tuple outcomes
-    if (outcome.IsArray() && outcome.Size() == 2) {
-
-        // Look for 2-tuples with a character parameter
-        const Value &param = outcome[1];
-        if (param.IsString() && param.GetStringLength() == 1) {
-            switch (param.GetString()[0]) {
-
-                // Perfectly diffuse, emit the ray with a random angle.
-                case 'd':
-                    d.ray.origin = d.point;
-                    d.ray.setAngle(s.uniform(0, M_PI * 2.0));
-                    return true;
-
-                // Perfectly transparent, emit the ray with no change in angle.
-                case 't':
-                    d.ray.origin = d.point;
-                    return true;
-
-                // Reflected back according to the object's surface normal
-                case 'r':
-                    d.ray.origin = d.point;
-                    d.ray.reflect(d.normal);
-                    return true;
-
-            }
-        }
-    }
-
-    // Unknown outcome
     return false;
 }
 
