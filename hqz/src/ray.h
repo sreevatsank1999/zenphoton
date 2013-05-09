@@ -162,15 +162,16 @@ struct Ray
         if (origin.y > box.bottom && direction.y >= 0) return false;
 
         /*
-         * Now do intersection tests with two perpendicular sides. This
-         * tells us whether the ray ever enters/exits the box. If the first
-         * two tests fail, we know the ray never touches the box. Otherwise,
-         * do the other two tests and get an accurate closest distance.
+         * Now do detailed intersection tests along all four edges. We know
+         * that any ray which hits one edge will hit two, but we don't
+         * yet know which two.
          */
 
         double dist;
         bool success = false;
         Vec2 topLeft = { box.left, box.top };
+        Vec2 topRight = { box.right, box.top };
+        Vec2 bottomLeft = { box.left, box.bottom };
         Vec2 horizontal = { box.right - box.left, 0 };
         Vec2 vertical = { 0, box.bottom - box.top };
 
@@ -182,22 +183,16 @@ struct Ray
             success = true;
             closest = std::min(closest, dist);
         }
-
-        if (success) {
-            Vec2 topRight = { box.right, box.top };
-            Vec2 bottomLeft = { box.left, box.bottom };
-
-            if (intersectSegment(bottomLeft, horizontal, dist)) {
-                closest = std::min(closest, dist);
-            }
-            if (intersectSegment(topRight, vertical, dist)) {
-                closest = std::min(closest, dist);
-            }
-
-            return true;
+        if (intersectSegment(bottomLeft, horizontal, dist)) {
+            success = true;
+            closest = std::min(closest, dist);
+        }
+        if (intersectSegment(topRight, vertical, dist)) {
+            success = true;
+            closest = std::min(closest, dist);
         }
 
-        return false;
+        return success;
     }
 
     double intersectFurthestAABB(const AABB &box) const
