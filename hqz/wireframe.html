@@ -129,8 +129,8 @@ $(window)
     [ (x - vx) / vw * @width, (y - vy) / vh * @height]
 
 @drawFrame = (scene) ->
-    @ctx.strokeStyle = '#fff'
-    @ctx.lineWidth = 0.75
+    @ctx.lineWidth = 1.0
+    @ctx.strokeStyle = '#faf'
 
     for obj in scene.lights
         x = @sampleCenter obj[1]
@@ -142,29 +142,56 @@ $(window)
         @ctx.arc x, y, 40, angle + 0, angle + 2 * Math.PI, false
         @ctx.stroke()
 
+    @ctx.lineWidth = 0.75
+    @ctx.strokeStyle = '#fff'
+
     for obj in scene.objects
         switch obj.length
             when 5
-                # Line segment
+                # Plain old line segment
+
                 x0 = @sampleCenter obj[1]
                 y0 = @sampleCenter obj[2]
                 dx = @sampleCenter obj[3]
                 dy = @sampleCenter obj[4]
+
+                t0 = @transform scene, x0, y0
+                t1 = @transform scene, x0+dx, y0+dy
+
                 @ctx.beginPath()
-                @ctx.moveTo.apply @ctx, @transform scene, x0, y0
-                @ctx.lineTo.apply @ctx, @transform scene, x0+dx, y0+dy
+                @ctx.moveTo t0[0], t0[1]
+                @ctx.lineTo t1[0], t1[1]
                 @ctx.stroke()
 
             when 7
-                # Line segment with explicit normals
+                # Line segment with trigonometrically interpolated normals.
+                # Draw the normals in the conventional way as short lines
+                # sticking out from the surface, but indicate the delta with an
+                # arc extending tangent to this line. This makes surfaces look
+                # "hairy", and each hair has a short "tooth" pointing along
+                # the interpolation path.
+
                 x0 = @sampleCenter obj[1]
                 y0 = @sampleCenter obj[2]
+                a0 = Math.PI / 180 * @sampleCenter obj[3]
                 dx = @sampleCenter obj[4]
                 dy = @sampleCenter obj[5]
+                da = Math.PI / 180 * @sampleCenter obj[6]
+
+                t0 = @transform scene, x0, y0
+                t1 = @transform scene, x0+dx, y0+dy
+
                 @ctx.beginPath()
-                @ctx.moveTo.apply @ctx, @transform scene, x0, y0
-                @ctx.lineTo.apply @ctx, @transform scene, x0+dx, y0+dy
+                @ctx.moveTo t0[0], t0[1]
+                @ctx.lineTo t1[0], t1[1]
                 @ctx.stroke()
+
+                @ctx.beginPath()
+                @ctx.moveTo t0[0], t0[1]
+                @ctx.arc t0[0], t0[1], 10, a0, a0 + da, da < 0
+                @ctx.strokeStyle = '#44f'
+                @ctx.stroke()
+                @ctx.strokeStyle = '#fff'
 
             else
                 console.log [ "Unsupported object", obj ]
