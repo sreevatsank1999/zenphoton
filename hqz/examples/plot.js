@@ -2,15 +2,18 @@
  * plot.js -- A generic function plotter for HQZ. This module defines
  *            a function which, given a function describing a 2D curve,
  *            returns a list of HQZ objects describing that curve.
- * 
+ *
  * Optional arguments:
  *
- *   material:     Defaults to zero.
- *   resolution:   Distance between vertices, in scene units
- *   step:         Step size for numerical differentiation
+ *   material:     Material index. Defaults to zero.
+ *   resolution:   Distance between vertices, in scene units.
+ *   step:         Step size for numerical differentiation, default to 1e-6.
  *
  * The provided 'func' takes one argument, a float between 0 and 1.
  * It returns a 2-element [x, y] array.
+ *
+ * The function should be differentiable. This algorithm is not
+ * designed for curves with instantaneous sharp corners.
  *
  * Micah Elizabeth Scott <micah@scanlime.org>
  *
@@ -23,8 +26,8 @@ module.exports = function (options, func)
     var results = [];
     var material = options.material || 0;
     var resolution = options.resolution || 4.0;
-    var step = options.step || 0.000001;
-    var t = 0;
+    var step = options.step || 1e-6;
+    var t = 0.0;
     var flag = false;
     var xp, yp, ap;
 
@@ -39,12 +42,22 @@ module.exports = function (options, func)
         var dy = (xy1[1] - xy0[1]) / step;
 
         // Length and angle of normal vector
+        // (Convert to degrees, since the hqz scene format is in degrees.)
         var dl = Math.sqrt(dx*dx + dy*dy);
         var da = Math.atan2(dx, -dy) * (180.0 / Math.PI);
 
-        // If we have at least two points, add a segment
         if (flag) {
-            results.push([ material, xp, yp, ap, xy0[0]-xp, xy0[1]-yp, da-ap ]);
+            // We have at least two points. Add a segment.
+
+            // Compute the shortest path on a circle from 'ap' to 'da'.
+            // The resulting delta is always in [-180, 180], but 'da' is unbounded.
+            var d = (da - ap) % 360;
+            if (d > 180) d -= 360;
+            else if (d < -180) d += 360;
+            da = ap + d;
+
+            // Store a scene object: line segment with interpolated normal angle
+            results.push([ material, xp, yp, ap, xy0[0]-xp, xy0[1]-yp, d ]);
         }
 
         // Save "previous" values for the next point
