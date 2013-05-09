@@ -9,7 +9,7 @@
  *   resolution:   Distance between vertices, in scene units
  *   step:         Step size for numerical differentiation
  *
- *   The provided 'func' takes one argument, a float between 0 and 1.
+ * The provided 'func' takes one argument, a float between 0 and 1.
  * It returns a 2-element [x, y] array.
  *
  * Micah Elizabeth Scott <micah@scanlime.org>
@@ -64,5 +64,8 @@ module.exports = function (options, func)
         // Limits on how quickly or slowly we can advance. Clamp to 1.0
         t = Math.min(1.0, t + Math.min(0.1, Math.max(0.000001, adv)));
 
+        // If we hit a NaN, we could loop forever. Throw an exception
+        if (t != t)
+            throw "Numerical error in plot(), did your function return NaN?";
     }
 }
