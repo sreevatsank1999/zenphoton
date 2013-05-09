@@ -53,6 +53,11 @@ private:
         // Split threshold for number of objects in one node.
         static const unsigned kSplitThreshold = 16;
 
+        Node() : split(0) {
+            children[0] = 0;
+            children[1] = 0;
+        }
+
         IndexArray objects;     // Objects that don't fully fit in either child
         double split;           // Split location
         Node *children[2];      // [ < split, >= split ]
@@ -127,13 +132,8 @@ inline void ZQuadtree::build(const Value &objects)
      * Start out with all items in the root node
      */
 
-    mRoot.split = 0;
-    mRoot.children[0] = 0;
-    mRoot.children[1] = 0;
-
     mObjects = &objects;
     mRoot.objects.resize(objects.Size());
-
     for (unsigned i = 0; i < objects.Size(); ++i)
         mRoot.objects[i] = i;
 
