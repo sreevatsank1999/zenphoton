@@ -5,7 +5,10 @@ A batch renderer in the style of Zen photon garden.
 
 High Quality Zen (`hqz`) is a command line tool which converts a JSON scene description into a rendered PNG image. Rays are traced in 2D, just like on [zenphoton.com](http://zenphoton.com). But freed from the constraints of interactivity and HTML5, `hqz` can focus on creating high quality renderings for print and animation.
 
-Artwork from [zenphoton.com](http://zenphoton.com) may be converted to JSON using an included `zen2json.coffee` script. This can be used to render print-quality versions of existing images, or as a starting point for experimenting with the other capabilities of `hqz`.
+* Watch the [High Quality Zen intro video](http://www.youtube.com/watch?v=obbew_7_Xo8)
+
+
+Artwork from [zenphoton.com](http://zenphoton.com) may be converted to JSON using an included `zen2json.coffee` script. This can be used to render print-quality versions of existing images, or as a starting point for experimenting with the other capabilities of `hqz`. Because the input format is JSON, it's easy to generate input from any programming language.
 
 In `hqz` we extend the [zenphoton.com](http://zenphoton.com) scene model with many new features:
 
@@ -60,7 +63,7 @@ It's very CPU-intensive to render animations with `hqz`, so we include scripts t
 
 ### Animation Format
 
-Animations are represented as text files with one JSON-encoded scene object per line. Each scene object is processed independently by a different instance of `hqz`.
+Animations are represented as text files with one frame's JSON-encoded scene object per line. Each frame is processed independently by a different instance of `hqz`.
 
 There is an example animation `examples/branches.coffee`. This is a script which programmatically animates a scene, and writes the resulting JSON lines to stdout.
 

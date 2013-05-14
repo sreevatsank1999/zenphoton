@@ -23,6 +23,9 @@ Batch Renderer
 
 An experimental batch rendererer called `hqz` (High Quality Zen) is under development in the `hqz` directory. 
 
+* Watch the [High Quality Zen intro video](http://www.youtube.com/watch?v=obbew_7_Xo8)
+* Read through the [README for hqz](https://github.com/scanlime/zenphoton/blob/master/hqz/README.md)
+
 Contact
 -------
 
