@@ -25,10 +25,11 @@ Build for Local Rendering
 
 If you want to run `hqz` on your own computer, you'll need to compile it from C++ source first. Fortunately, you won't need any dependencies other than a C++ compiler and the standard library.
 
-You can build it by just running `make` on the command line. This should work on Mac OS X and Linux. Not tested on Windows, but maybe it will work anyway!
+You can build it by just running `make` on the command line. This should work on Mac OS X and Linux, and with the MinGW compiler on Windows.
+
 
 	$ make
-	cc -c -o src/zrender.o src/zrender.cpp -Isrc -Wall -Werror -g -O3 -ffast-math -fno-exceptions
+	cc -c -o src/zrender.o src/zrender.cpp -Isrc -Wall -g -O3 -march=native -ffast-math …
 	…
 	$ ./hqz example.json example.png
 	$ open example.png
