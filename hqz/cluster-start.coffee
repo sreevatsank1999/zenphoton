@@ -65,8 +65,8 @@ AWS = require 'aws-sdk'
 async = require 'async'
 util = require 'util'
 
-iam = new AWS.IAM({ apiVersion: '2010-05-08' }).client
-ec2 = new AWS.EC2({ apiVersion: '2013-02-01' }).client
+iam = new AWS.IAM().client
+ec2 = new AWS.EC2().client
 log = (msg) -> console.log "[#{ (new Date).toJSON() }] #{msg}"
 
 if process.argv.length != 3

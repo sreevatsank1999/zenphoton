@@ -60,7 +60,7 @@ AWS = require 'aws-sdk'
 async = require 'async'
 util = require 'util'
 
-ec2 = new AWS.EC2({ apiVersion: '2013-02-01' }).client
+ec2 = new AWS.EC2().client
 log = console.log
 
 if process.argv.length != 3

@@ -31,7 +31,7 @@ AWS = require 'aws-sdk'
 async = require 'async'
 util = require 'util'
 
-ec2 = new AWS.EC2({ apiVersion: '2013-02-01' }).client
+ec2 = new AWS.EC2().client
 
 log = (msg) -> console.log "[#{ (new Date).toJSON() }] #{msg}"
 verbose = process.argv.indexOf("-v") >= 0
