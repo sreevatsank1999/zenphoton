@@ -41,31 +41,6 @@ import os.path
 #####SETTINGS
 
 debug = False #remove all newlines to read with wireframe.html
-# check_Z = True #if true, vertices not on xy plane ignored. useful for normals export
-
-# engine_path = 'D:\\Infographie\\HQZ\\hqz\\hqz.exe'
-# folder = "D:\\Infographie\\HQZ\\HQZ_trucs\\examples\\carrerond\\"
-# file_name = "carrerond"
-
-# resolution_x = 1920
-# resolution_y = 1080
-# export_animation = False
-# start_frame = 1
-# end_frame = 5
-# exposure = 0.4
-# gamma = 1
-# ray_number = 1000000
-# time = 30 #0 for infinite
-# seed = 0
-# normals_export = True
-# normals_revert = False
-
-# #####MATERIALS
-
-# materials = [   #format : [diffusion, transmission, reflection]
-# [0.5,0.0,0.3],
-# [0.3,0.5,0.1],
-# ]
 
 #####UTILITY FUNCTIONS
 
