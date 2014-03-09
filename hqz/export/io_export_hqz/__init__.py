@@ -99,12 +99,12 @@ def HSV2wavelength(color):
 def get_loc(context, object):
     '''Get location for object in argument.'''
     sc = context.scene
-    x, y = object.location[0]*sc.hqz_resolution_x, object.location[1]*sc.hqz_resolution_x
+    x, y = object.matrix_world.to_translation()[0]*sc.hqz_resolution_x, object.matrix_world.to_translation()[1]*sc.hqz_resolution_x
     return x,y
 
 def get_rot(object):
     '''Get rotation for object in argument.'''
-    rot = -object.rotation_euler[0]*180/pi
+    rot = -object.matrix_world.to_euler()[0]*180/pi
     return rot
 
 def vector2rotation(context, vector):
