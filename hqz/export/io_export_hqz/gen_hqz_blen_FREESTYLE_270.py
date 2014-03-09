@@ -1,62 +1,83 @@
-####### hqz exporter for blender V0.3 ##############
+####### hqz exporter for blender V0.3.2 ##############
 #   Damien Picard 2014
 #
 #  Freestyle hqz export module
 #
 #
-# Tightly based on freestyle SVG exporter by:
+# Heavily based on freestyle SVG exporter by:
 # Tamito KAJIYAMA <19 August 2009>
 #
 #  Thank you !
 #
 #
  
-from freestyle import *
-#from logical_operators import *
-from freestyle.chainingiterators import *
-from freestyle.predicates import *
-from freestyle.shaders import *
-from freestyle.types import *
+
+from freestyle.chainingiterators import ChainSilhouetteIterator
+from freestyle.predicates import (AndUP1D, NotUP1D,
+    QuantitativeInvisibilityUP1D, TrueUP1D, UnaryPredicate1D)
+from freestyle.shaders import (ConstantColorShader,
+    ConstantThicknessShader, StrokeShader)
+from freestyle.types import Operators
 import bpy
 import os
 
-class HQZWriter(StrokeShader):
+class ObjectNamesUP1D(UnaryPredicate1D):
+    def __init__(self, names, negative):
+        UnaryPredicate1D.__init__(self)
+        self._names = names
+        self._negative = negative
+
+    def __call__(self, viewEdge):
+        found = viewEdge.viewshape.name in self._names
+        if self._negative:
+            return not found
+        return found
+
+class HQZWriter0(StrokeShader):
     def __init__(self, w, h):
         StrokeShader.__init__(self)
         self.width, self.height = w, h
     def shade(self, stroke):
         points = []
         for v in stroke:
-            #print(v.point)
-            point=[]
+            point=[0]
             x, y = v.point
             point.append(x)
             point.append(self.height - y)
             points.append(point)
-        #print(points)
         points = str(points)
         points += ', '
         bpy.context.scene['hqz_3D_objects_string'] += points
-        #points = " ".join(points)
-        #r, g, b = v.attribute.color * 255
-        #color = "#%02x%02x%02x" % (r, g, b)
-        #width = v.attribute.thickness
-        #width = width[0] + width[1]
-        #self.file.write(_PATH % (color, width, points))
 
-import freestyle
+def join_unary_predicates(upred_list, bpred):
+    if not upred_list:
+        return None
+    upred = upred_list[0]
+    for p in upred_list[1:]:
+        upred = bpred(upred, p)
+    return upred
+
 import freestyle.utils
 scene = freestyle.utils.getCurrentScene()
 current_frame = scene.frame_current
 w = scene.render.resolution_x
 h = scene.render.resolution_y
 
-upred = QuantitativeInvisibilityUP1D(0)
+names={}
+try:
+    names = dict((ob.name, True) for ob in bpy.data.groups['0'].objects)
+except:
+    pass
+
+selection_criteria = []
+selection_criteria.append(QuantitativeInvisibilityUP1D(0))
+selection_criteria.append(ObjectNamesUP1D(names, False))
+upred = join_unary_predicates(selection_criteria, AndUP1D)
 Operators.select(upred)
 Operators.bidirectional_chain(ChainSilhouetteIterator(), NotUP1D(upred))
-writer = HQZWriter(w, h)
+writer = HQZWriter0(w, h)
 shaders_list = [
-    ConstantThicknessShader(2),
+    ConstantThicknessShader(1),
     #pyDepthDiscontinuityThicknessShader(1, 4),
     ConstantColorShader(0, 0, 0),
     #pyMaterialColorShader(0.5),

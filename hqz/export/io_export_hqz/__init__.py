@@ -1,4 +1,4 @@
-####### hqz exporter for blender V0.3.1 ##############
+####### hqz exporter for blender V0.3.2 ##############
 #
 #   Damien Picard 2014
 
@@ -131,43 +131,6 @@ def prepare(context):
     sc.render.engine = 'BLENDER_RENDER'
     cam = sc.camera
     
-    if sc.hqz_export_3D:
-        sc.hqz_resolution_x = sc.render.resolution_x
-        sc.hqz_resolution_y = sc.render.resolution_y
-        
-        sc.render.use_freestyle = True
-        sc.render.line_thickness_mode = 'RELATIVE'
-        rl = sc.render.layers.active
-        rl.use_solid = False
-        rl.use_halo = False
-        rl.use_ztransp = False
-        rl.use_sky = False
-        rl.use_edge_enhance = False
-        rl.use_strand = False
-        rl.use_freestyle = True
-        sc.render.layers[0].freestyle_settings.mode = 'SCRIPT'
-        if len(rl.freestyle_settings.modules) < 1:
-            ##workaround for 2.70 API change
-            if bpy.app.version[1] == 69 and bpy.app.version[2] >= 5:
-                freestyle_file_ver = 'gen_hqz_blen_FREESTYLE_270.py'
-            else:
-                freestyle_file_ver = 'gen_hqz_blen_FREESTYLE.py'
-            script_path = bpy.utils.script_path_user()+"/addons/io_export_hqz/"+freestyle_file_ver
-            bpy.ops.scene.freestyle_module_add()
-            freestyle_text = bpy.data.texts.load(filepath=script_path)
-            rl.freestyle_settings.modules[0].script = freestyle_text
-#        sc.render.layers['RenderLayer'].freestyle_settings.modules[0].script
-        
-    else:
-        sc.render.resolution_x = sc.hqz_resolution_x
-        sc.render.resolution_y = sc.hqz_resolution_y
-        cam.data.type = 'ORTHO'
-        cam.data.ortho_scale = 1
-        if sc.hqz_resolution_y > sc.hqz_resolution_x:
-            cam.data.ortho_scale = sc.hqz_resolution_y / sc.hqz_resolution_x
-        cam.rotation_euler = (0,0,0)
-        cam.location = (0.5,sc.hqz_resolution_y/sc.hqz_resolution_x/2,5)
-    
     ###add object ID properties
     for obj in sc.objects:
         if obj.type == 'LAMP' and obj.is_visible(sc):
@@ -186,11 +149,74 @@ def prepare(context):
             if not "hqz_material" in obj:
                 obj["hqz_material"] = 0
     
+    ###settings for freestyle export
+    if sc.hqz_export_3D:
+        sc.hqz_resolution_x = sc.render.resolution_x
+        sc.hqz_resolution_y = sc.render.resolution_y
         
-
+        sc.render.use_freestyle = True
+        sc.render.line_thickness_mode = 'RELATIVE'
+        rl = sc.render.layers.active
+        rl.use_solid = False
+        rl.use_halo = False
+        rl.use_ztransp = False
+        rl.use_sky = False
+        rl.use_edge_enhance = False
+        rl.use_strand = False
+        rl.use_freestyle = True
+        rl.freestyle_settings.mode = 'SCRIPT'
+        rl.freestyle_settings.use_culling = True
+        if len(rl.freestyle_settings.modules) < 5:
+            ##workaround for 2.70 API change
+            if bpy.app.version[1] == 69 and bpy.app.version[2] >= 5:
+                freestyle_file_ver = 'gen_hqz_blen_FREESTYLE_270.py'
+            else:
+                freestyle_file_ver = 'gen_hqz_blen_FREESTYLE.py'
+            script_path = bpy.utils.script_path_user()+"/addons/io_export_hqz/"+freestyle_file_ver
+            freestyle_module_1 = bpy.data.texts.load(filepath=script_path, internal = True)
+            freestyle_module_1.name = 'freestyle_module_0.py'
+            bpy.ops.scene.freestyle_module_add()
+            rl.freestyle_settings.modules[0].script = freestyle_module_1
+            for module in range(1,5):
+                module_name = 'freestyle_module_{0}'.format(module)#create new module for each material
+                #print("module1 : ",freestyle_module_1)
+                module_text = freestyle_module_1.copy()#duplicate module
+                module_text.name = module_name+'.py'#rename module
+                module_text.use_fake_user = True #save file on reloading blend
+                for line in module_text.lines:#modify module
+                    line.body = line.body.replace('            point=[0]', '            point=[{0}]'.format(module))
+                    line.body = line.body.replace("bpy.data.groups['0'].objects", "bpy.data.groups['{0}'].objects".format(module))
+                    line.body = line.body.replace("HQZWriter0", "HQZWriter{0}".format(module))
+                bpy.ops.scene.freestyle_module_add()
+                exec("rl.freestyle_settings.modules[{0}].script = module_text.id_data".format(module))
+        
+        for grp in range(5): #create groups
+            if not str(grp) in bpy.data.groups:
+                bpy.data.groups.new(str(grp))
+                
+        for obj in sc.objects:
+            if obj.type == 'MESH' and obj.is_visible(sc):
+                for grp in range(5): #remove mesh object from all groups
+                    if obj.name in bpy.data.groups[str(grp)].objects:
+                        bpy.data.groups[str(grp)].objects.unlink(obj)
+                current_group = str(obj["hqz_material"])
+                bpy.data.groups[current_group].objects.link(obj)
+        
+    else:
+        sc.render.resolution_x = sc.hqz_resolution_x
+        sc.render.resolution_y = sc.hqz_resolution_y
+        cam.data.type = 'ORTHO'
+        cam.data.ortho_scale = 1
+        if sc.hqz_resolution_y > sc.hqz_resolution_x:
+            cam.data.ortho_scale = sc.hqz_resolution_y / sc.hqz_resolution_x
+        cam.rotation_euler = (0,0,0)
+        cam.location = (0.5,sc.hqz_resolution_y/sc.hqz_resolution_x/2,5)
+    
+    
 
 ###START WRITING
 def export(context):
+    prepare(context)
     sc = context.scene
     '''Create export text and write to file.'''
     if sc.hqz_animation:
@@ -339,38 +365,37 @@ def export(context):
             scene_code = scene_code[:-2]#remove last comma
             
         else: ###FREESTYLE EXPORT
-            #print('objets :',sc['hqz_3D_objects_string'])
             point_list = eval(sc['hqz_3D_objects_string'])
             for stroke in point_list:
                 #print(stroke)
                 for index, point in enumerate(stroke):
                     if index != len(stroke)-1:#         point != stroke[-1]:
                         scene_code += '        [ '
-                        scene_code += '0 , '                                              #MATERIAL
-                        scene_code += str(point[0]) + ', '                                #VERT1 XPOS
-                        scene_code += str(point[1]) + ', '                                #VERT1 YPOS
+                        scene_code += str(point[0]) + ', '                                              #MATERIAL
+                        scene_code += str(point[1]) + ', '                                #VERT1 XPOS
+                        scene_code += str(point[2]) + ', '                                #VERT1 YPOS
                         if sc.hqz_normals_export:                                         #VERT1 NORMAL
                             if index == 0:
                                 v1N = vector2rotation(context, mathutils.Vector((point[0], point[1])))
                                 scene_code += str(v1N) + ', '
                             else:
-                                v1NX = 2*point[0] - stroke[index-1][0] - stroke[index+1][0]
-                                v1NY = 2*point[1] - stroke[index-1][1] - stroke[index+1][1]
+                                v1NX = 2*point[1] - stroke[index-1][1] - stroke[index+1][1]
+                                v1NY = 2*point[2] - stroke[index-1][2] - stroke[index+1][2]
                                 v1N = mathutils.Vector((v1NX, v1NY))
                                 v1N = vector2rotation(context, v1N)
                                 scene_code += str(v1N) + ', '
-                                print(v1N)
+                                #print(v1N)
                         
                         
-                        scene_code += str(stroke[index+1][0] - point[0]) + ', '           #VERT2 DELTA XPOS
-                        scene_code += str(stroke[index+1][1] - point[1]) + '],'           #VERT2 DELTA YPOS
+                        scene_code += str(stroke[index+1][1] - point[1]) + ', '           #VERT2 DELTA XPOS
+                        scene_code += str(stroke[index+1][2] - point[2]) + '],'           #VERT2 DELTA YPOS
                         if sc.hqz_normals_export:                                         
                             scene_code = scene_code[:-2]#remove last comma and bracket
                             if index == len(stroke)-2:
-                                v2N = vector2rotation(context, mathutils.Vector((point[1], point[0])))
+                                v2N = vector2rotation(context, mathutils.Vector((point[2], point[1])))
                             else:
-                                v2NX = 2*stroke[index+1][0] - point[0] - stroke[index+2][0]
-                                v2NY = 2*stroke[index+1][1] - point[1] - stroke[index+2][1]
+                                v2NX = 2*stroke[index+1][1] - point[1] - stroke[index+2][1]
+                                v2NY = 2*stroke[index+1][2] - point[2] - stroke[index+2][2]
                                 v2N = mathutils.Vector((v2NX, v2NY))
                                 v2N = vector2rotation(context, v2N)
                                 v2N = v2N - v1N
