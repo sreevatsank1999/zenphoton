@@ -20,7 +20,7 @@ from freestyle.types import *
 import bpy
 import os
 
-class SVGWriter(StrokeShader):
+class HQZWriter(StrokeShader):
     def __init__(self, w, h):
         StrokeShader.__init__(self)
         self.width, self.height = w, h
@@ -38,10 +38,10 @@ class SVGWriter(StrokeShader):
         points += ', '
         bpy.context.scene['hqz_3D_objects_string'] += points
         #points = " ".join(points)
-#        r, g, b = v.attribute.color * 255
-#        color = "#%02x%02x%02x" % (r, g, b)
-#        width = v.attribute.thickness
-#        width = width[0] + width[1]
+        #r, g, b = v.attribute.color * 255
+        #color = "#%02x%02x%02x" % (r, g, b)
+        #width = v.attribute.thickness
+        #width = width[0] + width[1]
         #self.file.write(_PATH % (color, width, points))
 
 import freestyle
@@ -54,7 +54,7 @@ h = scene.render.resolution_y
 upred = QuantitativeInvisibilityUP1D(0)
 Operators.select(upred)
 Operators.bidirectional_chain(ChainSilhouetteIterator(), NotUP1D(upred))
-writer = SVGWriter(w, h)
+writer = HQZWriter(w, h)
 shaders_list = [
     ConstantThicknessShader(2),
     #pyDepthDiscontinuityThicknessShader(1, 4),

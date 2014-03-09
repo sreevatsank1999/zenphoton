@@ -52,7 +52,6 @@
 #
 # TODO 
 # exception if folder not set
-# file select window
 # FREESTYLE : 
 #             spotlights in cam space
 #             3D materials :
@@ -431,7 +430,7 @@ def export(context):
             shell_path += '.sh'
             shell_script += '#!/bin/bash\n\n'
         for frame in frame_range:
-            shell_script += '"' + sc.hqz_engine \
+            shell_script += '"' + sc.hqz_engine + 'hqz' \
                 + '" "'+ sc.hqz_directory  + sc.hqz_file \
                 + '_' + str(frame).zfill(4) +'.json" "'  \
                 + sc.hqz_directory  + sc.hqz_file + '_' \
@@ -449,10 +448,12 @@ def init_properties():
     scene_type = bpy.types.Scene
     
     scene_type.hqz_engine = bpy.props.StringProperty(
-        name="Engine path")
+        name="Engine path",
+        subtype="DIR_PATH")
         
     scene_type.hqz_directory = bpy.props.StringProperty(
-        name="Export directory")
+        name="Export directory",
+        subtype="DIR_PATH")
         
     scene_type.hqz_file = bpy.props.StringProperty(
         name="File name")
