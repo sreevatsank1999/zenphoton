@@ -147,7 +147,12 @@ def prepare(context):
         rl.use_freestyle = True
         sc.render.layers[0].freestyle_settings.mode = 'SCRIPT'
         if len(rl.freestyle_settings.modules) < 1:
-            script_path = bpy.utils.script_path_user()+"/addons/io_export_hqz/gen_hqz_blen_FREESTYLE.py"
+            ##workaround for 2.70 API change
+            if bpy.app.version[1] == 69 and bpy.app.version[2] >= 5:
+                freestyle_file_ver = 'gen_hqz_blen_FREESTYLE_270.py'
+            else:
+                freestyle_file_ver = 'gen_hqz_blen_FREESTYLE.py'
+            script_path = bpy.utils.script_path_user()+"/addons/io_export_hqz/"+freestyle_file_ver
             bpy.ops.scene.freestyle_module_add()
             freestyle_text = bpy.data.texts.load(filepath=script_path)
             rl.freestyle_settings.modules[0].script = freestyle_text
