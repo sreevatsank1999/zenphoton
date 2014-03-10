@@ -54,11 +54,7 @@
 # exception if folder not set
 # FREESTYLE : 
 #             spotlights in cam space
-#             3D materials :
-#               button to assign material ID with field
-#               copy freestyle script to folder
-#               find means to pass mat index to lines list in freestyle script (groups?)
-#               assign group to selected object
+#             ignore hidden lights
 #
 #             custom freestyle contour shaders?
 #             option not to check light visibility? or reduce intensity?
@@ -69,7 +65,7 @@
 bl_info = {
     "name": "HQZ exporter",
     "author": "Damien Picard",
-    "version": (0, 3, 1),
+    "version": (0, 3, 2),
     "blender": (2, 6, 9),
     "location": "View3D > Tool Shelf > HQZ Exporter",
     "description": "Export scene to HQZ renderer",
