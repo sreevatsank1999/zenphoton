@@ -164,7 +164,7 @@ def prepare(context):
         rl.freestyle_settings.use_culling = True
         if len(rl.freestyle_settings.modules) < 5:
             ##workaround for 2.70 API change
-            if bpy.app.version[1] == 69 and bpy.app.version[2] >= 5:
+            if bpy.app.version[1] > 69:
                 freestyle_file_ver = 'gen_hqz_blen_FREESTYLE_270.py'
             else:
                 freestyle_file_ver = 'gen_hqz_blen_FREESTYLE.py'
