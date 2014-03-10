@@ -81,7 +81,7 @@ def get_rot(object):
 #    rot = cmds.xform(object, absolute=True, rotation=True, query=True)
     selection = cmds.ls(sl=True)
     loc = cmds.spaceLocator(position=(0,0,0))
-    orient_cons = cmds.orientConstraint(obj,loc)
+    orient_cons = cmds.orientConstraint(object,loc)
     cmds.delete(orient_cons)
     cmds.move(0,0,-1, loc, relative = True, objectSpace = True)
     vec = []
