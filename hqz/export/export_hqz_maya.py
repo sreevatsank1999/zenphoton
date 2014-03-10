@@ -1,4 +1,4 @@
-####### hqz exporter for maya V0.6 ##############
+####### hqz exporter for maya V0.6.1 ##############
 #   Damien Picard 2014
 #
 #	HQZ by M. Elizabeth Scott - http://scanlime.org/
