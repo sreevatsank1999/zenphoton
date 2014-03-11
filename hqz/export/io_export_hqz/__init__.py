@@ -222,6 +222,15 @@ def prepare(context):
 
 ###START WRITING
 def export(context):
+    '''Create export text and write to file.'''
+    sc = context.scene
+    prepare(context)
+    if sc.hqz_animation:
+        start_frame = sc.hqz_start_frame
+        frame_range = range(sc.hqz_start_frame, sc.hqz_end_frame+1)
+    else:
+        start_frame = sc.frame_current
+        frame_range = start_frame,
         
     ###DIRTY LOOP FOR BASH SCRIPT.
     if sc.hqz_batch:
@@ -241,18 +250,9 @@ def export(context):
                 + str(frame).zfill(4) +'.png"\n'
         file = open(shell_path, 'w')
         file.write(shell_script)
-        file.close(
+        file.close()
         
         
-    prepare(context)
-    sc = context.scene
-    '''Create export text and write to file.'''
-    if sc.hqz_animation:
-        start_frame = sc.hqz_start_frame
-        frame_range = range(sc.hqz_start_frame, sc.hqz_end_frame+1)
-    else:
-        start_frame = sc.frame_current
-        frame_range = start_frame,
 
     for frame in frame_range:
         print('exporting frame',frame)
