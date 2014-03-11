@@ -222,6 +222,28 @@ def prepare(context):
 
 ###START WRITING
 def export(context):
+        
+    ###DIRTY LOOP FOR BASH SCRIPT.
+    if sc.hqz_batch:
+        platform = os.sys.platform
+        shell_path = sc.hqz_directory +'batch'
+        shell_script = ''
+        if 'win' in platform:
+            shell_path += '.bat'
+        else:
+            shell_path += '.sh'
+            shell_script += '#!/bin/bash\n\n'
+        for frame in frame_range:
+            shell_script += '"' + sc.hqz_engine + 'hqz' \
+                + '" "'+ sc.hqz_directory  + sc.hqz_file \
+                + '_' + str(frame).zfill(4) +'.json" "'  \
+                + sc.hqz_directory  + sc.hqz_file + '_' \
+                + str(frame).zfill(4) +'.png"\n'
+        file = open(shell_path, 'w')
+        file.write(shell_script)
+        file.close(
+        
+        
     prepare(context)
     sc = context.scene
     '''Create export text and write to file.'''
@@ -233,6 +255,7 @@ def export(context):
         frame_range = start_frame,
 
     for frame in frame_range:
+        print('exporting frame',frame)
         
         #####FRAME SETTINGS OVERRIDE GENERAL SETTINGS
         seed = frame
@@ -449,27 +472,6 @@ def export(context):
             
         file = open(save_path, 'w')
         file.write(scene_code)
-        file.close()
-        
-        
-    ###DIRTY LOOP FOR BASH SCRIPT.
-    if sc.hqz_batch:
-        platform = os.sys.platform
-        shell_path = sc.hqz_directory +'batch'
-        shell_script = ''
-        if 'win' in platform:
-            shell_path += '.bat'
-        else:
-            shell_path += '.sh'
-            shell_script += '#!/bin/bash\n\n'
-        for frame in frame_range:
-            shell_script += '"' + sc.hqz_engine + 'hqz' \
-                + '" "'+ sc.hqz_directory  + sc.hqz_file \
-                + '_' + str(frame).zfill(4) +'.json" "'  \
-                + sc.hqz_directory  + sc.hqz_file + '_' \
-                + str(frame).zfill(4) +'.png"\n'
-        file = open(shell_path, 'w')
-        file.write(shell_script)
         file.close()
 
 
