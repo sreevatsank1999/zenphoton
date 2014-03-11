@@ -12,12 +12,11 @@
 #
  
 from freestyle import *
-from chainingiterators import ChainSilhouetteIterator
-from predicates import (AndUP1D, NotUP1D,
-    QuantitativeInvisibilityUP1D, TrueUP1D, UnaryPredicate1D)
-from shaders import (ConstantColorShader,
-    ConstantThicknessShader, StrokeShader)
-from types import Operators
+#from ChainingIterators import ChainSilhouetteIterator
+from logical_operators import (AndUP1D, NotUP1D)
+#from shaders import (ConstantColorShader,
+#    ConstantThicknessShader, StrokeShader)
+#from freestyle import Operators, ChainSilhouetteIterator
 import bpy
 import os
 
