@@ -41,7 +41,7 @@ class HQZWriter0(StrokeShader):
         points = []
         for v in stroke:
             point=[0]
-            x, y = v.point
+            x, y = v.point# / 100 * bpy.context.scene.render.resolution_percentage
             point.append(x)
             point.append(self.height - y)
             points.append(point)
@@ -60,8 +60,8 @@ def join_unary_predicates(upred_list, bpred):
 import freestyle.utils
 scene = freestyle.utils.getCurrentScene()
 current_frame = scene.frame_current
-w = scene.render.resolution_x
-h = scene.render.resolution_y
+w = scene.hqz_resolution_x 
+h = scene.hqz_resolution_y
 
 names={}
 try:

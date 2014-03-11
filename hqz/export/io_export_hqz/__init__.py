@@ -157,8 +157,8 @@ def prepare(context):
     
     ###settings for freestyle export
     if sc.hqz_export_3D:
-        sc.hqz_resolution_x = sc.render.resolution_x
-        sc.hqz_resolution_y = sc.render.resolution_y
+        sc.hqz_resolution_x = sc.render.resolution_x * bpy.context.scene.render.resolution_percentage / 100
+        sc.hqz_resolution_y = sc.render.resolution_y * bpy.context.scene.render.resolution_percentage / 100
         
         sc.render.use_freestyle = True
         sc.render.line_thickness_mode = 'RELATIVE'
@@ -396,7 +396,7 @@ def export(context):
         else: ###FREESTYLE EXPORT
             point_list = eval(sc['hqz_3D_objects_string'])
             for stroke in point_list:
-                #print(stroke)
+                print(stroke)
                 for index, point in enumerate(stroke):
                     if index != len(stroke)-1:
                         scene_code += '        [ '
