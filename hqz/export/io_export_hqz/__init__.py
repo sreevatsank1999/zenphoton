@@ -1,4 +1,4 @@
-####### hqz exporter for blender V0.3.2 ##############
+####### hqz exporter for blender V0.3.3 ##############
 #
 #   Damien Picard 2014
 
