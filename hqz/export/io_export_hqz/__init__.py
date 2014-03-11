@@ -120,6 +120,16 @@ def vector2rotation(context, vector):
     
     return vec_angle
 
+def check_inside(context,x,y):
+    '''Check if object is inside field of view'''
+    sc = context.scene
+    if (sc.hqz_outside_limit < 0 \
+    or (x + sc.hqz_outside_limit) > 0 \
+    and (y + sc.hqz_outside_limit) > 0 \
+    and (x - sc.hqz_outside_limit) < sc.render.resolution_x \
+    and (y - sc.hqz_outside_limit) < sc.render.resolution_y):
+        return True
+
 
 #SET SCENE
 def prepare(context):
@@ -235,7 +245,7 @@ def export(context):
             bpy.ops.render.render()
             sc['hqz_3D_objects_string'] = sc['hqz_3D_objects_string'][:-2]
             sc['hqz_3D_objects_string'] += "]"
-            print(sc['hqz_3D_objects_string'])
+            #print(sc['hqz_3D_objects_string'])
         
         if sc.hqz_animation:
             sc.frame_set(frame)
@@ -260,17 +270,17 @@ def export(context):
 
         for light in sc.objects:
             if light.type == 'LAMP' and light.is_visible(sc):
-                light_hidden = False
+                light_obstacle = False
                 if sc.hqz_export_3D:
-                    for obj_to_check in sc.objects:
+                    for obj_to_check in sc.objects:#raycast for visibility checking
                         if obj_to_check.type == 'MESH' and obj_to_check.is_visible(sc):
                             cam_loc = obj_to_check.matrix_world.inverted() * cam.matrix_world.to_translation()
                             light_loc = obj_to_check.matrix_world.inverted() * light.matrix_world.to_translation()
                             if obj_to_check.ray_cast(light_loc, cam_loc)[2] != -1:
-                                light_hidden = True
+                                light_obstacle = True
                                 break
                         
-                if not light_hidden:
+                if not light_obstacle:
                     use_spectral = light["hqz_3_spectral_light"]
                     spectral_start = light["hqz_4_spectral_start"]
                     spectral_end = light["hqz_5_spectral_end"]
@@ -281,26 +291,27 @@ def export(context):
                         view_coords = bpy_extras.object_utils.world_to_camera_view(sc, sc.camera, light.location)
                         x, y = (view_coords[0]-cam.data.shift_x*2)*sc.hqz_resolution_x, (view_coords[1]-cam.data.shift_y*2)*sc.hqz_resolution_y
                         #print(x,y)
-                    
-                    y = sc.hqz_resolution_y-y
-                    rot = get_rot(light)
-                    
-                    scene_code += '        [ '    
-                    scene_code += str(light.data.energy) + ', '                                     #LIGHT POWER
-                    scene_code += str(x) + ', '                                                   #XPOS
-                    scene_code += str(y)                                                          #YPOS
-                    scene_code += ', [0, 360], ['                                                 #POLAR ANGLE
-                    scene_code += str(light["hqz_1_light_start"]) + ', ' #POLAR DISTANCE MIN
-                    scene_code += str(light["hqz_2_light_end"]) + '], [' #POLAR DISTANCE MAX
-                    if light.data.type == 'SPOT':
-                        scene_code += str(rot-light.data.spot_size*90/pi) + ', '               #ANGLE
-                        scene_code +=  str(rot+light.data.spot_size*90/pi) + '], '
-                    else:
-                        scene_code += '0, 360], '
-                    if use_spectral:
-                        scene_code += '[{0}, {1}] ],\n'.format(spectral_start, spectral_end)   
-                    else:
-                        scene_code += str(int(wav))  +' ],\n'                                         #WAVELENGTH
+                    if check_inside(context,x,y):
+                        
+                        y = sc.hqz_resolution_y-y
+                        rot = get_rot(light)
+                        
+                        scene_code += '        [ '    
+                        scene_code += str(light.data.energy) + ', '                                     #LIGHT POWER
+                        scene_code += str(x) + ', '                                                   #XPOS
+                        scene_code += str(y)                                                          #YPOS
+                        scene_code += ', [0, 360], ['                                                 #POLAR ANGLE
+                        scene_code += str(light["hqz_1_light_start"]) + ', ' #POLAR DISTANCE MIN
+                        scene_code += str(light["hqz_2_light_end"]) + '], [' #POLAR DISTANCE MAX
+                        if light.data.type == 'SPOT':
+                            scene_code += str(rot-light.data.spot_size*90/pi) + ', '               #ANGLE
+                            scene_code +=  str(rot+light.data.spot_size*90/pi) + '], '
+                        else:
+                            scene_code += '0, 360], '
+                        if use_spectral:
+                            scene_code += '[{0}, {1}] ],\n'.format(spectral_start, spectral_end)   
+                        else:
+                            scene_code += str(int(wav))  +' ],\n'                                         #WAVELENGTH
                 
         scene_code = scene_code[:-2]#remove last comma
         scene_code += '\n    ],\n'
@@ -318,7 +329,6 @@ def export(context):
                     for edge in obj.data.edges:
                         edgev = []
                         vertices = list(edge.vertices)
-                        #print('Z :', (obj.matrix_world*obj.data.vertices[vertices[0]].co)[2])
                         material = obj["hqz_material"]
                         edgev.append(material)
                         edgev.append(obj.matrix_world*obj.data.vertices[vertices[0]].co)
@@ -328,46 +338,45 @@ def export(context):
                             edgev.append((obj.rotation_euler[2] * 180/pi) + vector2rotation(context, obj.data.vertices[vertices[0]].normal))
                             edgev.append((obj.rotation_euler[2] * 180/pi) + vector2rotation(context, obj.data.vertices[vertices[1]].normal))
                         
-                        #print(edgev)
                         if sc.hqz_check_Z:
                             if fabs((obj.matrix_world*obj.data.vertices[vertices[0]].co)[2]) < 0.0001 and fabs((obj.matrix_world*obj.data.vertices[vertices[1]].co)[2]) < 0.0001:
                                 edge_list.append(edgev)
                         else:
                             edge_list.append(edgev)
-            #print(edge_list)
         
         ####OBJECTS
         if not sc.hqz_export_3D:###2D EXPORT
             for edge in edge_list:
-                #print(edge)
-                scene_code += '        [ '    
-                scene_code += str(edge[0]) + ', '                                                                  #MATERIAL
-                scene_code += str(edge[1][0]*sc.hqz_resolution_x) + ', '                                    #VERT1 XPOS
-                scene_code += str(sc.hqz_resolution_y - (edge[1][1]*sc.hqz_resolution_x)) + ', '                   #VERT1 YPOS
-                if sc.hqz_normals_export:
-                    scene_code += str(edge[3]) + ', '                                                #VERT1 NORMAL
-                
-                scene_code += str(edge[2][0]*sc.hqz_resolution_x - (edge[1][0]*sc.hqz_resolution_x)) + ', '        #VERT2 DELTA XPOS 
-                scene_code += str(-1 * (edge[2][1]*sc.hqz_resolution_x - (edge[1][1]*sc.hqz_resolution_x))) + '],' #VERT2 DELTA YPOS 
-                if sc.hqz_normals_export:
-                    scene_code = scene_code[:-2]#remove last comma and bracket
-                    normal = (edge[4]) - (edge[3])
-                    if normal < -180:
-                        normal += 360
-                    if normal > 180:
-                        normal -= 360
-                    scene_code += ',' + str(normal) + '],'                           #VERT2 NORMAL
-                scene_code += '\n'
-            scene_code = scene_code[:-2]#remove last comma
+                if check_inside(context, edge[1][0]*sc.hqz_resolution_x, edge[1][1]*sc.hqz_resolution_x):
+                    #print(edge)
+                    scene_code += '        [ '    
+                    scene_code += str(edge[0]) + ', '                                                                  #MATERIAL
+                    scene_code += str(edge[1][0]*sc.hqz_resolution_x) + ', '                                           #VERT1 XPOS
+                    scene_code += str(sc.hqz_resolution_y - (edge[1][1]*sc.hqz_resolution_x)) + ', '                   #VERT1 YPOS
+                    if sc.hqz_normals_export:
+                        scene_code += str(edge[3]) + ', '                                                              #VERT1 NORMAL
+                    
+                    scene_code += str(edge[2][0]*sc.hqz_resolution_x - (edge[1][0]*sc.hqz_resolution_x)) + ', '        #VERT2 DELTA XPOS 
+                    scene_code += str(-1 * (edge[2][1]*sc.hqz_resolution_x - (edge[1][1]*sc.hqz_resolution_x))) + '],' #VERT2 DELTA YPOS 
+                    if sc.hqz_normals_export:
+                        scene_code = scene_code[:-2]#remove last comma and bracket
+                        normal = (edge[4]) - (edge[3])
+                        if normal < -180:
+                            normal += 360
+                        if normal > 180:
+                            normal -= 360
+                        scene_code += ',' + str(normal) + '],'                           #VERT2 NORMAL
+                    scene_code += '\n'
+                scene_code = scene_code[:-2]#remove last comma
             
         else: ###FREESTYLE EXPORT
             point_list = eval(sc['hqz_3D_objects_string'])
             for stroke in point_list:
                 #print(stroke)
                 for index, point in enumerate(stroke):
-                    if index != len(stroke)-1:#         point != stroke[-1]:
+                    if index != len(stroke)-1:
                         scene_code += '        [ '
-                        scene_code += str(point[0]) + ', '                                              #MATERIAL
+                        scene_code += str(point[0]) + ', '                                #MATERIAL
                         scene_code += str(point[1]) + ', '                                #VERT1 XPOS
                         scene_code += str(point[2]) + ', '                                #VERT1 YPOS
                         if sc.hqz_normals_export:                                         #VERT1 NORMAL
@@ -380,7 +389,6 @@ def export(context):
                                 v1N = mathutils.Vector((v1NX, v1NY))
                                 v1N = vector2rotation(context, v1N)
                                 scene_code += str(v1N) + ', '
-                                #print(v1N)
                         
                         
                         scene_code += str(stroke[index+1][1] - point[1]) + ', '           #VERT2 DELTA XPOS
@@ -422,9 +430,7 @@ def export(context):
         scene_code = scene_code[:-2]#remove last comma
         scene_code += '\n    ]\n'
 
-
         scene_code += '}'
-        #print(scene_code)
 
 
         if debug:
@@ -546,11 +552,15 @@ def init_properties():
         
     scene_type.hqz_check_Z = bpy.props.BoolProperty(
         name="Check Z value",
-        default=True)
+        default=False)
         
     scene_type.hqz_export_3D = bpy.props.BoolProperty(
         name="Export 3D",
         default=True)
+        
+    scene_type.hqz_outside_limit = bpy.props.FloatProperty(
+        name="Object outside view by (px)",
+        default=(-1))
         
     scene_type.hqz_3D_objects_string = bpy.props.StringProperty(
         name="Object list",
@@ -615,6 +625,8 @@ class HQZPanel(bpy.types.Panel):
         col = layout.column(align=True)
         col.label("File settings")
         row = col.row(align=True)
+        row.prop(sc,"hqz_export_3D")
+        row = col.row(align=True)
         row.prop(sc,"hqz_engine")
         row = col.row(align=True)
         row.prop(sc,"hqz_directory")
@@ -647,14 +659,15 @@ class HQZPanel(bpy.types.Panel):
         row = col.row(align=True)
         row.prop(sc,"hqz_normals_export")
         row = col.row(align=True)
-        row.prop(sc,"hqz_normals_invert")
-        row = col.row(align=True)
-        row.prop(sc,"hqz_export_3D")
+        row.prop(sc,"hqz_outside_limit")
+        col.label("If -1, export all objects.")
+        #row.prop(sc,"hqz_normals_invert")
+        #row = col.row(align=True)
         
         
         row = col.row(align=True)
         col.label(" ")
-        col.label("Material settings")
+        col.label("   Material settings")
         col.label("Please enter factors for")
         col.label("diffusion, transmission and")
         col.label("reflection. The sum should")
