@@ -289,9 +289,10 @@ def export(context):
                         x, y = get_loc(context, light)
                     else:###FREESTYLE EXPORT
                         view_coords = bpy_extras.object_utils.world_to_camera_view(sc, sc.camera, light.location)
+                        print(view_coords)
                         x, y = (view_coords[0]-cam.data.shift_x*2)*sc.hqz_resolution_x, (view_coords[1]-cam.data.shift_y*2)*sc.hqz_resolution_y
                         #print(x,y)
-                    if check_inside(context,x,y):
+                    if view_coords[2] > 0 and check_inside(context,x,y):#check that light is inside camera field and not behind it
                         
                         y = sc.hqz_resolution_y-y
                         rot = get_rot(light)
