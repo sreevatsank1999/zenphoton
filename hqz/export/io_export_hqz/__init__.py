@@ -205,7 +205,7 @@ def prepare(context):
                 for grp in range(5): #remove mesh object from all groups
                     if obj.name in bpy.data.groups[str(grp)].objects:
                         bpy.data.groups[str(grp)].objects.unlink(obj)
-                current_group = str(obj["hqz_material"])
+                current_group = str(obj.data["hqz_material"])
                 bpy.data.groups[current_group].objects.link(obj)
         
     else:
