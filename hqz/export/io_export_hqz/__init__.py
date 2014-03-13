@@ -257,9 +257,6 @@ def export(context):
     for frame in frame_range:
         print('exporting frame',frame)
         
-        #####FRAME SETTINGS OVERRIDE GENERAL SETTINGS
-        seed = frame
-        
         ####GET FREESTYLE POINTS
         
         if sc.hqz_export_3D:
@@ -302,7 +299,7 @@ def export(context):
                             if obj_to_check.ray_cast(light_loc, cam_loc)[2] != -1:
                                 light_obstacle = True
                                 break
-                        
+                                
                 if not light_obstacle:
                     use_spectral = light.data["hqz_3_spectral_light"]
                     spectral_start = light.data["hqz_4_spectral_start"]
@@ -310,6 +307,7 @@ def export(context):
                     wav = HSV2wavelength(light.data.color)
                     if not sc.hqz_export_3D:###2D EXPORT
                         x, y = get_loc(context, light)
+                        view_coords = (1,1,1)
                     else:###FREESTYLE EXPORT
                         view_coords = bpy_extras.object_utils.world_to_camera_view(sc, sc.camera, light.location)
                         #print(view_coords)
@@ -391,7 +389,7 @@ def export(context):
                             normal -= 360
                         scene_code += ',' + str(normal) + '],'                           #VERT2 NORMAL
                     scene_code += '\n'
-                scene_code = scene_code[:-2]#remove last comma
+            scene_code = scene_code[:-2]#remove last comma
             
         else: ###FREESTYLE EXPORT
             point_list = eval(sc['hqz_3D_objects_string'])
@@ -449,7 +447,7 @@ def export(context):
         #print(materials)
         
         for mat in materials:
-            scene_code += '        [ [ ' + str(mat[0]) + ', "d" ],[ ' + str(mat[1]) + ', "t" ],[ ' + str(mat[2]) + ', "r" ] ],\n'
+            scene_code += '        [ [ ' + str(mat[0]) + ', "d" ], [ ' + str(mat[1]) + ', "t" ], [ ' + str(mat[2]) + ', "r" ] ],\n'
                 
         scene_code = scene_code[:-2]#remove last comma
         scene_code += '\n    ]\n'
