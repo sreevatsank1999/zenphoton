@@ -617,6 +617,9 @@ class HQZPanel(bpy.types.Panel):
     bl_idname = "3D_VIEW_PT_hqz"
     bl_space_type = "VIEW_3D"
     bl_region_type = "TOOLS"
+    if bpy.app.version[1] > 69:
+        bl_category = "Export"
+        bl_context = "objectmode"
     
     
     def draw(self,context):
