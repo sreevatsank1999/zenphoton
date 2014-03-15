@@ -232,7 +232,7 @@ def export(context):
         start_frame = sc.frame_current
         frame_range = start_frame,
         
-    ###DIRTY LOOP FOR BASH SCRIPT.
+    ###DIRTY LOOP FOR BATCH SCRIPT.
     if sc.hqz_batch:
         platform = os.sys.platform
         shell_path = sc.hqz_directory +'batch'
@@ -247,7 +247,10 @@ def export(context):
                 + '" "'+ sc.hqz_directory  + sc.hqz_file \
                 + '_' + str(frame).zfill(4) +'.json" "'  \
                 + sc.hqz_directory  + sc.hqz_file + '_' \
-                + str(frame).zfill(4) +'.png"\n'
+                + str(frame).zfill(4) +'.png"'
+            if sc.hqz_ignore:
+                shell_script += ' -i'
+            shell_script += '\n'
         file = open(shell_path, 'w')
         file.write(shell_script)
         file.close()
@@ -299,7 +302,7 @@ def export(context):
                             if obj_to_check.ray_cast(light_loc, cam_loc)[2] != -1:
                                 light_obstacle = True
                                 break
-                                
+                        
                 if not light_obstacle:
                     use_spectral = light.data["hqz_3_spectral_light"]
                     spectral_start = light.data["hqz_4_spectral_start"]
@@ -495,6 +498,10 @@ def init_properties():
         name="Export batch file",
         default=True)
         
+    scene_type.hqz_ignore = bpy.props.BoolProperty(
+        name="Ignore existing file",
+        default=False)
+        
         
     scene_type.hqz_resolution_x = bpy.props.IntProperty(
         name="X resolution",
@@ -639,6 +646,9 @@ class HQZPanel(bpy.types.Panel):
         row = col.row(align=True)
         row.prop(sc,"hqz_batch")
         row = col.row(align=True)
+        if debug:
+            row.prop(sc,"hqz_ignore")
+            row = col.row(align=True)
         
         col.label(" ")
         col.label("Export settings")
