@@ -312,7 +312,7 @@ def export(context):
                         x, y = get_loc(context, light)
                         view_coords = (1,1,1)
                     else:###FREESTYLE EXPORT
-                        view_coords = bpy_extras.object_utils.world_to_camera_view(sc, sc.camera, light.location)
+                        view_coords = bpy_extras.object_utils.world_to_camera_view(sc, sc.camera, light.matrix_world.to_translation())
                         #print(view_coords)
                         x, y = (view_coords[0]-cam.data.shift_x*2)*sc.hqz_resolution_x, (view_coords[1]-cam.data.shift_y*2)*sc.hqz_resolution_y
                         #print(x,y)
