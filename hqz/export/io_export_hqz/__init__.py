@@ -80,7 +80,7 @@ import mathutils
 from math import pi, floor, fabs
 import os
 
-debug = False #remove all newlines to read with wireframe.html
+debug = True #remove all newlines to read with wireframe.html
 
 
 ####UTILITY FUNCTIONS
