@@ -59,8 +59,8 @@ def join_unary_predicates(upred_list, bpred):
 import freestyle
 scene = freestyle.getCurrentScene()
 current_frame = scene.frame_current
-w = scene.render.hqz_resolution_x
-h = scene.render.hqz_resolution_y
+w = scene.hqz_resolution_x
+h = scene.hqz_resolution_y
 
 names={}
 try:
