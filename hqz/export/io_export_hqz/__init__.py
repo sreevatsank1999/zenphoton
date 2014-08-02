@@ -108,6 +108,9 @@ def vector2rotation(context, vector):
     sc = context.scene
     null_vec = mathutils.Vector((1,0))
     vec = vector.to_2d()
+    if vec.length==0:
+        return 0
+
     vec_angle = vec.angle_signed(null_vec)*180/pi
     if sc.hqz_normals_invert:
         vec_angle = 180 - vec_angle
@@ -365,23 +368,25 @@ def export(context):
             edge_list = []
             for obj in sc.objects:
                 if obj.type == 'MESH' and obj.is_visible(sc):
-                    for edge in obj.data.edges:
+                    mesh = bpy.data.meshes.new_from_object(sc, obj, apply_modifiers=True, settings = 'PREVIEW')
+                    for edge in mesh.edges:
                         edgev = []
                         vertices = list(edge.vertices)
                         material = obj.data["hqz_material"]
                         edgev.append(material)
-                        edgev.append(obj.matrix_world*obj.data.vertices[vertices[0]].co)
-                        edgev.append(obj.matrix_world*obj.data.vertices[vertices[1]].co)
+                        edgev.append(obj.matrix_world*mesh.vertices[vertices[0]].co)
+                        edgev.append(obj.matrix_world*mesh.vertices[vertices[1]].co)
                         if sc.hqz_normals_export:
                             #print(vertices[0])
-                            edgev.append((obj.rotation_euler[2] * 180/pi) + vector2rotation(context, obj.data.vertices[vertices[0]].normal))
-                            edgev.append((obj.rotation_euler[2] * 180/pi) + vector2rotation(context, obj.data.vertices[vertices[1]].normal))
+                            edgev.append((obj.rotation_euler[2] * 180/pi) + vector2rotation(context, mesh.vertices[vertices[0]].normal))
+                            edgev.append((obj.rotation_euler[2] * 180/pi) + vector2rotation(context, mesh.vertices[vertices[1]].normal))
 
                         if sc.hqz_check_Z:
-                            if fabs((obj.matrix_world*obj.data.vertices[vertices[0]].co)[2]) < 0.0001 and fabs((obj.matrix_world*obj.data.vertices[vertices[1]].co)[2]) < 0.0001:
+                            if fabs((obj.matrix_world*mesh.vertices[vertices[0]].co)[2]) < 0.0001 and fabs((obj.matrix_world*mesh.vertices[vertices[1]].co)[2]) < 0.0001:
                                 edge_list.append(edgev)
                         else:
                             edge_list.append(edgev)
+                    bpy.data.meshes.remove(mesh)
 
         ####OBJECTS
         if not sc.hqz_export_3D:###2D EXPORT
