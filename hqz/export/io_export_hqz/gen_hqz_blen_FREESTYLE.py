@@ -11,12 +11,13 @@
 #
 #
  
-from freestyle import *
-#from ChainingIterators import ChainSilhouetteIterator
-from logical_operators import (AndUP1D, NotUP1D)
-#from shaders import (ConstantColorShader,
-#    ConstantThicknessShader, StrokeShader)
-#from freestyle import Operators, ChainSilhouetteIterator
+
+from freestyle.chainingiterators import ChainSilhouetteIterator
+from freestyle.predicates import (AndUP1D, NotUP1D,
+    QuantitativeInvisibilityUP1D, TrueUP1D, UnaryPredicate1D)
+from freestyle.shaders import (ConstantColorShader,
+    ConstantThicknessShader, StrokeShader)
+from freestyle.types import Operators
 import bpy
 import os
 
@@ -40,7 +41,7 @@ class HQZWriter0(StrokeShader):
         points = []
         for v in stroke:
             point=[0]
-            x, y = v.point
+            x, y = v.point# / 100 * bpy.context.scene.render.resolution_percentage
             point.append(x)
             point.append(self.height - y)
             points.append(point)
@@ -56,10 +57,10 @@ def join_unary_predicates(upred_list, bpred):
         upred = bpred(upred, p)
     return upred
 
-import freestyle
-scene = freestyle.getCurrentScene()
+import freestyle.utils
+scene = freestyle.utils.getCurrentScene()
 current_frame = scene.frame_current
-w = scene.hqz_resolution_x
+w = scene.hqz_resolution_x 
 h = scene.hqz_resolution_y
 
 names={}
