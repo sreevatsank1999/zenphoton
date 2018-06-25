@@ -74,9 +74,9 @@ bl_info = {
     "category": "Import-Export"}
 
 import bpy
-import bpy_extras
+# import bpy_extras
 from mathutils import Vector
-from math import pi, floor, fabs, degrees
+from math import pi, floor, degrees
 from bpy_extras.object_utils import world_to_camera_view
 import os
 import json
@@ -84,12 +84,19 @@ import json
 
 # UTILITY FUNCTIONS
 
-def HSV2wavelength(color):
-    '''Convert RGB color to a wavelength from 400 to 700nm (approximative).'''
-    wavelength = ((0.7-color.h)-floor((0.7-color.h)))*300+400
+def color_to_wavelength(color):
+    '''Convert RGB color to a wavelength from 400 to 700nm (approximative).
+    From https://fr.mathworks.com/matlabcentral/answers/17011-color-wave-length-and-hue#answer_22936'''
     if color.s == 0:
-        wavelength = 0
-    return wavelength
+        return 0
+    else:
+        wavelength = 650 - color.h * 262.5
+        if color.s == 1.0:
+            return wavelength
+        else:
+            w_min = wavelength - 300 * (1-color.s)
+            w_max = wavelength + 300 * (1-color.s)
+            return [w_min, w_max]
 
 
 def get_rot(object):
@@ -98,38 +105,38 @@ def get_rot(object):
     return rot
 
 
-def vector2rotation(context, vector):
-    '''Convert 2D vector to signed angle between -180 and 180 degrees.'''
-    sc = context.scene
-    hqz_params = sc.hqz_parameters
-    null_vec = Vector((1, 0))
-    vec = vector.to_2d()
-    if vec.length == 0.0:
-        return 0
+# def vector2rotation(context, vector):
+#     '''Convert 2D vector to signed angle between -180 and 180 degrees.'''
+#     sc = context.scene
+#     hqz_params = sc.hqz_parameters
+#     null_vec = Vector((1, 0))
+#     vec = vector.to_2d()
+#     if vec.length == 0.0:
+#         return 0
+#
+#     vec_angle = vec.angle_signed(null_vec)*180/pi
+#     if hqz_params.normals_invert:
+#         vec_angle = 180 - vec_angle
+#     else:
+#         vec_angle *= -1
+#     if vec_angle < -180:
+#         vec_angle += 360
+#     if vec_angle > 180:
+#         vec_angle -= 360
+#
+#     return vec_angle
 
-    vec_angle = vec.angle_signed(null_vec)*180/pi
-    if hqz_params.normals_invert:
-        vec_angle = 180 - vec_angle
-    else:
-        vec_angle *= -1
-    if vec_angle < -180:
-        vec_angle += 360
-    if vec_angle > 180:
-        vec_angle -= 360
 
-    return vec_angle
-
-
-def check_inside(context, x, y):
-    '''Check if object is inside field of view'''
-    sc = context.scene
-    hqz_params = sc.hqz_parameters
-    if (hqz_params.outside_limit < 0
-            or (x + hqz_params.outside_limit) > 0
-            and (y + hqz_params.outside_limit) > 0
-            and (x - hqz_params.outside_limit) < sc.render.resolution_x
-            and (y - hqz_params.outside_limit) < sc.render.resolution_y):
-        return True
+# def check_inside(context, x, y):
+#     '''Check if object is inside field of view'''
+#     sc = context.scene
+#     hqz_params = sc.hqz_parameters
+#     if (hqz_params.outside_limit < 0
+#             or (x + hqz_params.outside_limit) > 0
+#             and (y + hqz_params.outside_limit) > 0
+#             and (x - hqz_params.outside_limit) < sc.render.resolution_x
+#             and (y - hqz_params.outside_limit) < sc.render.resolution_y):
+#         return True
 
 
 # # SET SCENE
@@ -314,7 +321,7 @@ def export(context):
                     use_spectral = lamp.data.hqz_lamp.use_spectral_light
                     spectral_start = lamp.data.hqz_lamp.spectral_start
                     spectral_end = lamp.data.hqz_lamp.spectral_end
-                    wav = HSV2wavelength(lamp.data.color)
+                    wav = color_to_wavelength(lamp.data.color)
                     # if not hqz_params.export_3D:  # 2D EXPORT
                     if True:
                         x, y, z = world_to_camera_view(
@@ -350,7 +357,7 @@ def export(context):
                         if use_spectral:
                             light.append([spectral_start, spectral_end])
                         else:
-                            light.append(int(wav))
+                            light.append(wav)
                     export_data['lights'].append(light)
 
         export_data['objects'] = []
@@ -423,39 +430,39 @@ def export(context):
 
             # OBJECTS
             for edge in edge_list:
-                if check_inside(
-                        context,
-                        edge["v1"].x * sc.render.resolution_x * rp,
-                        edge["v1"].y * sc.render.resolution_y * rp
-                        ):
-                    edge_data = []
-                    # MATERIAL
-                    edge_data.append(edge["material"])
-                    # VERT1 XPOS
-                    edge_data.append(
-                        edge["v1"].x
-                        * sc.render.resolution_x * rp)
-                    # VERT1 YPOS
-                    edge_data.append(
-                        (1 - edge["v1"].y) * sc.render.resolution_y * rp)
-                    # VERT1 NORMAL
-                    if hqz_params.normals_export:
-                        edge_data.append(edge["n1"])
-                    # VERT2 DELTA XPOS
-                    edge_data.append(
-                        (edge["v2"].x - edge["v1"].x)
-                        * sc.render.resolution_x * rp
-                    )
-                    # VERT2 DELTA YPOS
-                    edge_data.append(
-                        (edge["v1"].y - edge["v2"].y)
-                        * sc.render.resolution_y * rp
-                    )
-                    # VERT2 NORMAL
-                    if hqz_params.normals_export:
-                        edge_data.append(edge["n2"])
+                # if check_inside(
+                #         context,
+                #         edge["v1"].x * sc.render.resolution_x * rp,
+                #         edge["v1"].y * sc.render.resolution_y * rp
+                #         ):
+                edge_data = []
+                # MATERIAL
+                edge_data.append(edge["material"])
+                # VERT1 XPOS
+                edge_data.append(
+                    edge["v1"].x
+                    * sc.render.resolution_x * rp)
+                # VERT1 YPOS
+                edge_data.append(
+                    (1 - edge["v1"].y) * sc.render.resolution_y * rp)
+                # VERT1 NORMAL
+                if hqz_params.normals_export:
+                    edge_data.append(edge["n1"])
+                # VERT2 DELTA XPOS
+                edge_data.append(
+                    (edge["v2"].x - edge["v1"].x)
+                    * sc.render.resolution_x * rp
+                )
+                # VERT2 DELTA YPOS
+                edge_data.append(
+                    (edge["v1"].y - edge["v2"].y)
+                    * sc.render.resolution_y * rp
+                )
+                # VERT2 NORMAL
+                if hqz_params.normals_export:
+                    edge_data.append(edge["n2"])
 
-                    export_data['objects'].append(edge_data)
+                export_data['objects'].append(edge_data)
 
         # else:  # FREESTYLE EXPORT
         #     point_list = eval(sc['hqz_3D_objects_string'])
@@ -664,7 +671,7 @@ class HQZExportPanel(bpy.types.Panel):
         sub = row.column()
         sub.prop(hqz_params, "normals_invert")
         sub.active = hqz_params.normals_export
-        col.prop(hqz_params, "outside_limit")
+        # col.prop(hqz_params, "outside_limit")
 
         col = layout.column()
         col = layout.column()
@@ -686,6 +693,7 @@ class HQZLamp(bpy.types.PropertyGroup):
     spectral_end = bpy.props.FloatProperty(
         name='Spectral End',  min=400.0, max=700.0,
         default=700.0, step=20)
+
 
 class HQZMaterial(bpy.types.PropertyGroup):
     name = bpy.props.StringProperty()
@@ -748,10 +756,10 @@ class HQZParameters(bpy.types.PropertyGroup):
         name="Debug",
         description="Remove all newlines to read with wireframe.html",
         default=False)
-    outside_limit = bpy.props.FloatProperty(
-        name="Object outside view by (px)",
-        description="Do not export invisible points. Use negative value to export all",
-        default=-1.0)
+    # outside_limit = bpy.props.FloatProperty(
+    #     name="Object outside view by (px)",
+    #     description="Do not export invisible points. Use negative value to export all",
+    #     default=-1.0)
     # 3D_objects_string = bpy.props.StringProperty(
     #     name="Object list",
     #     default="")
@@ -791,6 +799,7 @@ def unregister():
     bpy.utils.unregister_class(HQZMaterialDelete)
     del bpy.types.Scene.hqz_material_id
     del bpy.types.Scene.hqz_lamp
+
 
 if __name__ == "__main__":
     register()
