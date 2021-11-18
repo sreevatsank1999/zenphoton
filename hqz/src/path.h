@@ -10,6 +10,11 @@ public:
     Path(Path &&p);
 
     size_t size() const;
+    Vec2 get_origin() const;
+    Color get_color() const;
+
+    Vec2& operator[](size_t indx);
+
     Path& operator=(Path &&p);
     void append(Vec2 point);
 
@@ -40,6 +45,17 @@ Path::Path(Path &&p)
 size_t Path::size() const{
     return v.size();
 }
+
+Vec2 Path::get_origin() const{
+    return origin;
+}
+Color Path::get_color() const{
+    return color;
+}
+
+Vec2& Path::operator[](size_t indx) {
+    return v[indx];
+};
 
 Path& Path::operator=(Path &&p){
     origin = p.origin;
