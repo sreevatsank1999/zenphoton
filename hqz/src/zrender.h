@@ -32,6 +32,7 @@
 #include "ray.h"
 #include "sampler.h"
 #include "zquadtree.h"
+#include "ztrace.h"
 #include <sstream>
 #include <vector>
 
@@ -51,24 +52,25 @@ public:
     unsigned height() const { return mImage.height(); }
 
 private:
+
+#if DEBUG == 1
     static const uint32_t kDebugQuadtree = 1 << 0;
+#endif
 
     HistogramImage mImage;
-    ZQuadtree mQuadtree;
 
     const Value& mScene;
     const Value& mViewport;
-    const Value& mLights;
-    const Value& mObjects;
-    const Value& mMaterials;
 
-    uint32_t mSeed;
-    double mLightPower;
-    uint32_t mDebug;
     double mRayLimit;
     double mTimeLimit;
 
+    uint32_t mDebug;
+    uint32_t batchsize;
+
     std::ostringstream mError;
+    
+    ZTrace* ptrTracer;
 
     struct ViewportSample {
         Vec2 origin;
@@ -83,29 +85,11 @@ private:
         }            
     };
 
-    // Data model
-    bool checkTuple(const Value &v, const char *noun, unsigned expected);
-    int checkInteger(const Value &v, const char *noun);
-    double checkNumber(const Value &v, const char *noun);
-    bool checkMaterialID(const Value &v);
-    bool checkMaterialValue(int index);
+    void draw(std::vector<Path> &Ps, ViewportSample &v);
 
-    // Raytracer entry point
-    void traceRay(Sampler &s);
-    void traceRayBatch(uint32_t seed, uint32_t count);
-    uint64_t traceRays();
-
-    // Light sampling
-    const Value &chooseLight(Sampler &s);
-    bool initRay(Sampler &s, Ray &r, const Value &light);
-    void initViewport(Sampler &s, ViewportSample &v);
-
-    // Material sampling
-    bool rayMaterial(IntersectionData &d, Sampler &s);
-
-    // Object sampling
-    bool rayIntersect(IntersectionData &d, Sampler &s, const ViewportSample &v);
-    void rayIntersectBounds(IntersectionData &d, const ViewportSample &v);
+    void initViewport(ViewportSample &v);
+    Vec2 rayIntersectViewport(Ray &r, const ViewportSample &v);     
+    bool is_insideViewport(Vec2 point, const ViewportSample &v);
 
     // Debugging
     void renderDebugQuadtree(ZQuadtree::Visitor &v);
