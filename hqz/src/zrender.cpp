@@ -135,11 +135,13 @@ void ZRender::draw(std::vector<Path> &Ps, ViewportSample &v){
 
     for(auto& trace : Ps){
         Vec2 p_1 = trace.get_origin();
+        Color path_color; path_color.setWavelength(trace.get_wavelength());
+        if(!path_color.isVisible())  continue;
 
-        const size_t n = trace.size();
+        const int n = trace.size();
         for(int i=0; i<n-1; i++){
             // Draw a line from d.ray.origin to d.point
-            mImage.line( trace.get_color(),
+            mImage.line( path_color,
                 v.xScale(p_1.x, w),
                 v.yScale(p_1.y, h),
                 v.xScale(trace[i].x, w),
@@ -162,7 +164,7 @@ void ZRender::draw(std::vector<Path> &Ps, ViewportSample &v){
         }
         
         // Draw last line 
-            mImage.line( trace.get_color(),
+            mImage.line( path_color,
                 v.xScale(p_1.x, w),
                 v.yScale(p_1.y, h),
                 v.xScale(last_point.x, w),
@@ -212,6 +214,7 @@ Vec2 ZRender::rayIntersectViewport(Ray &r, const ViewportSample &v)
     };
 
     Vec2 point = r.pointAtDistance(r.intersectFurthestAABB(viewportBox));
+    return point;
 }
 
 void ZRender::renderDebugQuadtree(ZQuadtree::Visitor &v)

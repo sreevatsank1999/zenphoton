@@ -90,10 +90,10 @@ Path ZTrace::traceRay(Sampler &s)
     d.object = 0;
 
     // Initialize the ray by sampling a light
-    if (!initRay(s, d.ray, chooseLight(s)))
-        return;
-
-    Path p(d.ray.origin,d.ray.color);
+    double lambda;
+    initRay(s, d.ray, lambda, chooseLight(s));
+     
+    Path p(d.ray.origin,lambda);
 
     // Look for a large but bounded number of bounces
     for (unsigned bounces = maxReflection; bounces; --bounces) {
@@ -117,7 +117,7 @@ Path ZTrace::traceRay(Sampler &s)
     return p;
 }
 
-bool ZTrace::initRay(Sampler &s, Ray &r, const Value &light)
+void ZTrace::initRay(Sampler &s, Ray &r, double &wavelength, const Value &light)
 {
     double cartesianX = s.value(light[1]);
     double cartesianY = s.value(light[2]);
@@ -129,28 +129,9 @@ bool ZTrace::initRay(Sampler &s, Ray &r, const Value &light)
     double rayAngle = s.value(light[5]) * (M_PI / 180.0);
     r.setAngle(rayAngle);
 
-    /*
-     * Try to discard rays for invisible wavelengths without actually
-     * counting them as real rays. (If we count them without tracing them,
-     * our scene will render as unexpectedly dark since some of the
-     * photons will not be visible on the rendered image.)
-     */
+    wavelength = s.value(light[6]);
+    r.color.setWavelength(wavelength);
 
-    unsigned tries = 1000;
-    for (;;) {
-        double wavelength = s.value(light[6]);
-        r.color.setWavelength(wavelength);
-        if (r.color.isVisible()) {
-            // Success
-            break;
-        } else {
-            // Can we keep looking?
-            if (!--tries)
-                return false;
-        }
-    }
-
-    return true;
 }
 
 

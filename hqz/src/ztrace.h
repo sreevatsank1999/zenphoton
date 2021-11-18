@@ -44,7 +44,7 @@ private:
 
     // Light sampling
     const Value &chooseLight(Sampler &s);
-    bool initRay(Sampler &s, Ray &r, const Value &light);
+    void initRay(Sampler &s, Ray &r, double &wavelength, const Value &light);
 
     // Material sampling
     bool rayMaterial(IntersectionData &d, Sampler &s);
