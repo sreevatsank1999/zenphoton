@@ -173,16 +173,22 @@ bool ZTrace::rayIntersect(IntersectionData &d, Sampler &s)
     return false;
 }
 void ZTrace::rayIntersectInf(IntersectionData &d) const {
+    
+    /*
+     * This ray is never going to hit an object. Update d.point with the furthest away
+     * InfBox intersection, if any. If this ray never intersects the InfBox, d.point
+     * will equal d.ray.origin.
+     */
 
-    if (d.point.x < d.point.y? d.point.x : d.point.y) {
-        double k = FLT_MAX/d.point.y;
-        d.point.x = k*d.point.x;
-        d.point.y = FLT_MAX;
-    } else {
-        double k = FLT_MAX/d.point.x;
-        d.point.x = FLT_MAX;
-        d.point.y = k*d.point.y;
-    }
+        AABB Inf = {
+        -FLT_MAX,
+        -FLT_MAX,
+        FLT_MAX,
+        FLT_MAX
+    };
+
+    d.point = d.ray.pointAtDistance(d.ray.intersectFurthestAABB(Inf));
+
     d.normal.x = nan("NaN");
     d.normal.y = nan("NaN");
 
