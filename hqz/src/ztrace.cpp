@@ -65,6 +65,7 @@ void ZTrace::traceRays(std::vector<Path> &paths, uint32_t nbRays)
         paths.insert(paths.end(), std::make_move_iterator(path_batch.begin()),
                                   std::make_move_iterator(path_batch.end()));
     }
+    mSeed += nbRays;
 }
 
 std::vector<Path> ZTrace::traceRayBatch(uint32_t seed, uint32_t count)
