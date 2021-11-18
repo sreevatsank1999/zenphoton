@@ -8,28 +8,27 @@ class ZCheck
 private:
     typedef rapidjson::Value Value;
 
-    std::ostringstream mError;
+    static std::ostringstream mError;
 
 public:
-    ZCheck(/* args */);
-    ~ZCheck();
     
-    const char *errorText() const;
-    bool hasError() const;
+    static const char *errorText();
+    static bool hasError();
 
     // Data checks
-    bool checkTuple(const Value &v, const char *noun, unsigned expected);
-    int checkInteger(const Value &v, const char *noun);
-    double checkNumber(const Value &v, const char *noun);
-    bool checkMaterialID(const Value &v, const Value &mMaterials);
-    bool checkMaterialValue(int index, const Value &mMaterials);
-
+    static bool checkTuple(const Value &v, const char *noun, unsigned expected);
+    static int checkInteger(const Value &v, const char *noun);
+    static double checkNumber(const Value &v, const char *noun);
+    static bool checkMaterialID(const Value &v, const Value &mMaterials);
+    static bool checkMaterialValue(int index, const Value &mMaterials);
+    static bool checkStopCondition(double mRayLimit, double mTimeLimit);
+    static bool checkLightPower(double mLightPower);
 };
 
-const char* ZCheck::errorText() const {
+const char* ZCheck::errorText() {
     return mError.str().c_str(); 
 }
-bool ZCheck::hasError() const {
+bool ZCheck::hasError() {
     return !mError.str().empty(); 
 }
 
@@ -120,4 +119,24 @@ bool ZCheck::checkMaterialValue(int index, const Value &mMaterials)
     }
 
     return result;
+}
+
+bool ZCheck::checkStopCondition(double mRayLimit, double mTimeLimit)
+{
+    if (mRayLimit <= 0.0 && mTimeLimit <= 0.0) {
+            mError << "No stopping conditions set. Expected a ray limit and/or time limit.\n";
+            return false;
+        }
+
+    return true;
+}
+
+bool ZCheck::checkLightPower(double mLightPower)
+{
+    if (mLightPower <= 0.0) {
+        mError << "Total light power (" << mLightPower << ") must be positive.\n";
+        return false;
+    }
+
+    return true;
 }
