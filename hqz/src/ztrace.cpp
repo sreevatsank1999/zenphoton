@@ -14,6 +14,8 @@ ZTrace::ZTrace(const Value &scene)
     // Optional iteger values
     mSeed = ZCheck::checkInteger(scene["seed"], "seed");
     mDebug = ZCheck::checkInteger(scene["debug"], "debug");
+    maxReflection = 1000;
+    batchsize = 1000;
 
     // Check stopping conditions
     mRayLimit = ZCheck::checkNumber(scene["rays"], "rays");
@@ -57,8 +59,6 @@ std::vector<Path> ZTrace::traceRays()
     double startTime = (double)time(0);
 
     std::vector<Path> paths;    paths.reserve(mRayLimit);
-
-    uint64_t batchsize = 1000;
 
     for(uint64_t rayCount=0; mRayLimit<mRayLimit; rayCount += batchsize) {
         // Minimum frequency for checking stopping conditions
@@ -107,7 +107,7 @@ Path ZTrace::traceRay(Sampler &s)
         return;
 
     // Look for a large but bounded number of bounces
-    for (unsigned bounces = maxBounce; bounces; --bounces) {
+    for (unsigned bounces = maxReflection; bounces; --bounces) {
 
         // Intersect with an object or the edge of the viewport
         bool hit = rayIntersect(d, s);

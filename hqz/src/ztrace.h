@@ -32,8 +32,8 @@ private:
     double mRayLimit;
     double mTimeLimit;
 
-   // uint32_t batchsize;
-    uint32_t maxBounce;
+    uint32_t batchsize;
+    uint32_t maxReflection;
 
     // Raytracer entry point
     Path traceRay(Sampler &s);
