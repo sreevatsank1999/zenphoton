@@ -11,7 +11,40 @@ ZTrace::ZTrace(const Value &scene)
     mMaterials(scene["materials"]),
     mLightPower(0.0)
 {
-    // Todo
+    // Optional iteger values
+    mSeed = ZCheck::checkInteger(scene["seed"], "seed");
+    mDebug = ZCheck::checkInteger(scene["debug"], "debug");
+
+    // Check stopping conditions
+    mRayLimit = ZCheck::checkNumber(scene["rays"], "rays");
+    mTimeLimit = ZCheck::checkNumber(scene["timelimit"], "timelimit");
+    ZCheck::checkStopCondition(mRayLimit,mTimeLimit);
+
+    // Add up the total light power in the scene, and check all lights.
+    if (ZCheck::checkTuple(mLights, "viewport", 1)) {
+        for (unsigned i = 0; i < mLights.Size(); ++i) {
+            const Value &light = mLights[i];
+            if (ZCheck::checkTuple(light, "light", 7))
+                mLightPower += light[0u].GetDouble();
+        }
+    }
+    ZCheck::checkLightPower(mLightPower);
+
+    // Check all objects
+    if (ZCheck::checkTuple(mObjects, "objects", 0)) {
+        for (unsigned i = 0; i < mObjects.Size(); ++i) {
+            const Value &object = mObjects[i];
+            if (ZCheck::checkTuple(object, "object", 5)) {
+                ZCheck::checkMaterialID(object[0u],mMaterials);
+            }
+        }
+    }
+
+    // Check all materials
+    if (ZCheck::checkTuple(mMaterials, "materials", 0)) {
+        for (unsigned i = 0; i < mMaterials.Size(); ++i)
+            ZCheck::checkMaterialValue(i,mMaterials);
+    }
 }
 
 std::vector<Path> ZTrace::traceRays()
