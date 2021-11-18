@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <vector>
 
+#define DEBUG 1
 
 class ZTrace{
 public:
@@ -15,7 +16,14 @@ public:
 
     ZTrace(const Value &scene);
 
-    std::vector<Path> traceRays();
+    void traceRays(std::vector<Path> &paths, uint32_t nbRays);
+
+#if DEBUG == 1
+    // Access to internal Data structure for debugging
+    ZQuadtree& getZQuadTree();
+#endif
+
+    double getLightPower() const;
 
 private:
     static const uint32_t kDebugQuadtree = 1 << 0;
@@ -28,9 +36,6 @@ private:
 
     uint32_t mSeed;
     double mLightPower;
-    uint32_t mDebug;
-    double mRayLimit;
-    double mTimeLimit;
 
     uint32_t batchsize;
     uint32_t maxReflection;

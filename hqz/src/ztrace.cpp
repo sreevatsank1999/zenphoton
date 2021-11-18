@@ -1,6 +1,5 @@
 
 #include <float.h>
-#include <time.h>
 #include "ztrace.h"
 #include "zcheck.h"
 #include "zmaterial.h"
@@ -13,14 +12,8 @@ ZTrace::ZTrace(const Value &scene)
 {
     // Optional iteger values
     mSeed = ZCheck::checkInteger(scene["seed"], "seed");
-    mDebug = ZCheck::checkInteger(scene["debug"], "debug");
     maxReflection = 1000;
     batchsize = 1000;
-
-    // Check stopping conditions
-    mRayLimit = ZCheck::checkNumber(scene["rays"], "rays");
-    mTimeLimit = ZCheck::checkNumber(scene["timelimit"], "timelimit");
-    ZCheck::checkStopCondition(mRayLimit,mTimeLimit);
 
     // Add up the total light power in the scene, and check all lights.
     if (ZCheck::checkTuple(mLights, "viewport", 1)) {
@@ -47,35 +40,31 @@ ZTrace::ZTrace(const Value &scene)
         for (unsigned i = 0; i < mMaterials.Size(); ++i)
             ZCheck::checkMaterialValue(i,mMaterials);
     }
+
+    mQuadtree.build(mObjects);
 }
 
-std::vector<Path> ZTrace::traceRays()
+#if DEBUG == 1
+ZQuadtree& ZTrace::getZQuadTree() {
+    return mQuadtree;
+}
+#endif
+
+double ZTrace::getLightPower() const {
+    return mLightPower;
+}
+
+void ZTrace::traceRays(std::vector<Path> &paths, uint32_t nbRays)
 {
-    /*
-     * Keep tracing rays until a stopping condition is hit.
-     * Returns the total number of rays traced.
-     */
-    
-    double startTime = (double)time(0);
+    paths.reserve(nbRays);
 
-    std::vector<Path> paths;    paths.reserve(mRayLimit);
-
-    for(uint64_t rayCount=0; mRayLimit<mRayLimit; rayCount += batchsize) {
+    for(uint64_t rayCount=0; rayCount<nbRays; rayCount += batchsize) {
         // Minimum frequency for checking stopping conditions
-
-        if (mTimeLimit) {
-            // Check time limit
-            double now = (double)time(0);
-            if (now > startTime + mTimeLimit)
-                break;
-        }
 
         std::vector<Path> path_batch = traceRayBatch(mSeed + rayCount, batchsize);
         paths.insert(paths.end(), std::make_move_iterator(path_batch.begin()),
                                   std::make_move_iterator(path_batch.end()));
     }
-
-    return paths;
 }
 
 std::vector<Path> ZTrace::traceRayBatch(uint32_t seed, uint32_t count)
@@ -100,11 +89,11 @@ Path ZTrace::traceRay(Sampler &s)
     IntersectionData d;
     d.object = 0;
 
-    Path p;
-
     // Initialize the ray by sampling a light
     if (!initRay(s, d.ray, chooseLight(s)))
         return;
+
+    Path p(d.ray.origin,d.ray.color);
 
     // Look for a large but bounded number of bounces
     for (unsigned bounces = maxReflection; bounces; --bounces) {
