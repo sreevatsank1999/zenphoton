@@ -5,7 +5,11 @@ HQZ_OBJS := \
 	src/histogramimage.o \
 	src/spectrum.o \
 	src/main.o \
-	src/lodepng.o
+	src/lodepng.o\
+	src/ztrace.o\
+	src/zcheck.o\
+	src/path.o\
+
 
 TMP_FILES := examples/benchmark.json examples/benchmark.png
 
