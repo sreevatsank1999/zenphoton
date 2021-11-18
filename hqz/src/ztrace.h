@@ -8,8 +8,6 @@
 #include <stdint.h>
 #include <vector>
 
-#define DEBUG 1
-
 class ZTrace{
 public:
     typedef rapidjson::Value Value;
