@@ -30,6 +30,7 @@
 #include <float.h>
 #include <algorithm>
 #include "spectrum.h"
+#include "rapidjson/document.h"
 
 
 struct Vec2
