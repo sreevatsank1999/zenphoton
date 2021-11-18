@@ -77,11 +77,13 @@ std::vector<Path> ZTrace::traceRayBatch(uint32_t seed, uint32_t count)
      * with respect to the PRNG sequence. This helps keep our noise pattern stationary,
      * which is a nice effect to have during animation.
      */
-
+    std::vector<Path> paths; paths.reserve(count);
     while (count--) {
         Sampler s(seed++);
-        traceRay(s);
+        paths.emplace_back(traceRay(s));
     }
+
+    return paths;
 }
 
 Path ZTrace::traceRay(Sampler &s)
@@ -134,6 +136,30 @@ void ZTrace::initRay(Sampler &s, Ray &r, double &wavelength, const Value &light)
 
 }
 
+const ZTrace::Value& ZTrace::chooseLight(Sampler &s){
+
+    // Pick a random light, using the light power as a probability weight.
+    // Fast path for scenes with only one light.
+
+    unsigned i = 0;
+    unsigned last = mLights.Size() - 1;
+
+    if (i != last) {
+        double r = s.uniform(0, mLightPower);
+        double sum = 0;
+
+        // Check all lights except the last
+        do {
+            const Value& light = mLights[i++];
+            sum += s.value(light[0u]);
+            if (r <= sum)
+                return light;
+        } while (i != last);
+    }
+
+    // Default, last light.
+    return mLights[last];
+}
 
 
 bool ZTrace::rayIntersect(IntersectionData &d, Sampler &s)
