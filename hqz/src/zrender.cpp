@@ -150,8 +150,8 @@ void ZRender::draw(std::vector<Path> &Ps, ViewportSample &v){
             p_1 = trace[i];
         }
         
-        Vec2 last_point;
-        if(!is_insideViewport(p_1,v)){
+        Vec2 last_point = trace[n-1];
+        if(!is_insideViewport(trace[n-1],v)){
             // Setting up final ray to clip it to within the viewport
             Ray r;  r.origin = p_1;   
             r.direction.x = trace[n-1].x - p_1.x;
@@ -159,8 +159,6 @@ void ZRender::draw(std::vector<Path> &Ps, ViewportSample &v){
             r.slope = r.direction.y/r.direction.x;
 
             last_point = rayIntersectViewport(r,v);
-        } else {
-            last_point = trace[n-1];
         }
         
         // Draw last line 
