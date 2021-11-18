@@ -9,8 +9,8 @@ public:
     Path(Vec2 o, Color c, uint32_t path_length_expected);
     Path(Path &&p);
 
+    size_t size() const;
     Path& operator=(Path &&p);
-
     void append(Vec2 point);
 
 private:
@@ -35,6 +35,10 @@ Path::Path(Path &&p)
 {
     origin = p.origin;
     color = p.color;
+}
+
+size_t Path::size() const{
+    return v.size();
 }
 
 Path& Path::operator=(Path &&p){
