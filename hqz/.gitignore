@@ -4,4 +4,4 @@ examples/benchmark.png
 *.o
 *.log
 hqz
-
+build/**
