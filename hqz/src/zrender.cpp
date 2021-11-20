@@ -82,7 +82,7 @@ void ZRender::render(std::vector<unsigned char> &pixels)
      */
     uint64_t numRays = 0;
     double startTime = (double)time(0);
-    std::vector<Path> traces;   traces.reserve(batchsize);
+    Paths traces;   traces.reserve(batchsize);
     while (1) {
 
         if (mRayLimit) {
@@ -127,7 +127,7 @@ void ZRender::render(std::vector<unsigned char> &pixels)
     mImage.render(pixels, scale, 1.0 / gamma);
 }
 
-void ZRender::draw(std::vector<Path> &Ps, ViewportSample &v){
+void ZRender::draw(Paths &Ps, ViewportSample &v){
 
     double w = width();
     double h = height();

@@ -54,21 +54,21 @@ double ZTrace::getLightPower() const {
     return mLightPower;
 }
 
-void ZTrace::traceRays(std::vector<Path> &paths, uint32_t nbRays)
+void ZTrace::traceRays(Paths &paths, uint32_t nbRays)
 {
     paths.reserve(nbRays);
 
     for(uint64_t rayCount=0; rayCount<nbRays; rayCount += batchsize) {
         // Minimum frequency for checking stopping conditions
 
-        std::vector<Path> path_batch = traceRayBatch(mSeed + rayCount, batchsize);
+        Paths path_batch = traceRayBatch(mSeed + rayCount, batchsize);
         paths.insert(paths.end(), std::make_move_iterator(path_batch.begin()),
                                   std::make_move_iterator(path_batch.end()));
     }
     mSeed += nbRays;
 }
 
-std::vector<Path> ZTrace::traceRayBatch(uint32_t seed, uint32_t count)
+Paths ZTrace::traceRayBatch(uint32_t seed, uint32_t count)
 {
     /*
      * Trace a batchsize of rays, starting with ray number "start", and
@@ -78,7 +78,7 @@ std::vector<Path> ZTrace::traceRayBatch(uint32_t seed, uint32_t count)
      * with respect to the PRNG sequence. This helps keep our noise pattern stationary,
      * which is a nice effect to have during animation.
      */
-    std::vector<Path> paths; paths.reserve(count);
+    Paths paths; paths.reserve(count);
     while (count--) {
         Sampler s(seed++);
         paths.emplace_back(traceRay(s));

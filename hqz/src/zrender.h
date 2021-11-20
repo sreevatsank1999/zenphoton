@@ -85,7 +85,7 @@ private:
         }            
     };
 
-    void draw(std::vector<Path> &Ps, ViewportSample &v);
+    void draw(Paths &Ps, ViewportSample &v);
 
     void initViewport(ViewportSample &v);
     Vec2 rayIntersectViewport(Ray &r, const ViewportSample &v);     

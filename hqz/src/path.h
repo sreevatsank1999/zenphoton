@@ -25,3 +25,4 @@ private:
     double wavelength;            // wavelength of the path
 };
 
+typedef std::vector<Path> Paths;

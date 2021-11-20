@@ -14,7 +14,7 @@ public:
 
     ZTrace(const Value &scene);
 
-    void traceRays(std::vector<Path> &paths, uint32_t nbRays);
+    void traceRays(Paths &paths, uint32_t nbRays);
 
 #if DEBUG == 1
     // Access to internal Data structure for debugging
@@ -40,7 +40,7 @@ private:
 
     // Raytracer entry point
     Path traceRay(Sampler &s);
-    std::vector<Path> traceRayBatch(uint32_t seed, uint32_t count);
+    Paths traceRayBatch(uint32_t seed, uint32_t count);
 
     // Light sampling
     const Value &chooseLight(Sampler &s);
