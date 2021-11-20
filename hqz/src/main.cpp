@@ -27,9 +27,9 @@
 
 #include "rapidjson/document.h"
 #include "rapidjson/reader.h"
-#include "rapidjson/filestream.h"
-#include "lodepng.h"
-#include "zrender.h"
+#include "rapidjson/filereadstream.h"
+#include "hqz/lodepng.h"
+#include "hqz/zrender.h"
 #include <signal.h>
 #include <unistd.h>
 #include <cstdio>
@@ -80,7 +80,8 @@ int main(int argc, char **argv)
         return 3;
     }
 
-    rapidjson::FileStream istr(sceneF);
+    char buff[1024];
+    rapidjson::FileReadStream istr(sceneF,buff,1024);
     rapidjson::Document scene;
     scene.ParseStream<0>(istr);
     if (scene.HasParseError()) {
