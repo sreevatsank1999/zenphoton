@@ -52,12 +52,7 @@ struct Vec2
         return a*(*this);
     }
 
-    friend Vec2 operator*(double a,const Vec2& v);
 };
-
-Vec2 operator*(double a,const Vec2& v){
-    return Vec2(a*v.x,a*v.y);
-}
 
 struct AABB
 {
