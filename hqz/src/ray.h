@@ -49,7 +49,7 @@ struct Vec2
         return Vec2(x-rhs.x, y-rhs.y);
     }
     Vec2 operator*(double a){
-        return a*(*this);
+        return Vec2(a*x,a*y);
     }
 
 };
