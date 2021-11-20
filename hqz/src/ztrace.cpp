@@ -126,8 +126,7 @@ void ZTrace::initRay(Sampler &s, Ray &r, double &wavelength, const Value &light)
     double cartesianY = s.value(light[2]);
     double polarAngle = s.value(light[3]) * (M_PI / 180.0);
     double polarDistance = s.value(light[4]);
-    r.origin.x = cartesianX + cos(polarAngle) * polarDistance;
-    r.origin.y = cartesianY + sin(polarAngle) * polarDistance;
+    r.origin = Vec2(cartesianX,cartesianY) + Vec2(cos(polarAngle),sin(polarAngle)) * polarDistance;
 
     double rayAngle = s.value(light[5]) * (M_PI / 180.0);
     r.setAngle(rayAngle);
@@ -197,8 +196,7 @@ void ZTrace::rayIntersectInf(IntersectionData &d) const {
 
     d.point = d.ray.pointAtDistance(d.ray.intersectFurthestAABB(Inf));
 
-    d.normal.x = nan("NaN");
-    d.normal.y = nan("NaN");
+    d.normal = Vec2(nan("NaN"),nan("NaN"));
 
     d.distance = nan("NaN");
 }

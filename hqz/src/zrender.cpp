@@ -154,8 +154,7 @@ void ZRender::draw(Paths &Ps, ViewportSample &v){
         if(!is_insideViewport(trace[n-1],v)){
             // Setting up final ray to clip it to within the viewport
             Ray r;  r.origin = p_1;   
-            r.direction.x = trace[n-1].x - p_1.x;
-            r.direction.y = trace[n-1].y - p_1.y;
+            r.direction = trace[n-1] - p_1;
             r.slope = r.direction.y/r.direction.x;
 
             last_point = rayIntersectViewport(r,v);
