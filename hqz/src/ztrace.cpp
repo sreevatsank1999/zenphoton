@@ -1,8 +1,8 @@
 
 #include <float.h>
-#include "ztrace.h"
-#include "zcheck.h"
-#include "zmaterial.h"
+#include "hqz/ztrace.h"
+#include "hqz/zcheck.h"
+#include "hqz/zmaterial.h"
 
 ZTrace::ZTrace(const Value &scene)
     : mLights(scene["lights"]),

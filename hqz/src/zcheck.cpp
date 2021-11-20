@@ -1,5 +1,5 @@
 
-#include "zcheck.h"
+#include "hqz/zcheck.h"
 
 const char* ZCheck::errorText() {
     return mError.str().c_str(); 

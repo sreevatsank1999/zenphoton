@@ -27,9 +27,9 @@
 
 #include <float.h>
 #include <time.h>
-#include "zrender.h"
-#include "zmaterial.h"
-#include "zcheck.h"
+#include "hqz/zrender.h"
+#include "hqz/zmaterial.h"
+#include "hqz/zcheck.h"
 
 ZRender::ZRender(const Value &scene)
     : mScene(scene),

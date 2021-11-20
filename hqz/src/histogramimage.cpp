@@ -26,8 +26,8 @@
  */
 
 #include <string.h>
-#include "histogramimage.h"
-#include "prng.h"
+#include "hqz/histogramimage.h"
+#include "hqz/prng.h"
 
 
 void HistogramImage::resize(unsigned w, unsigned h)

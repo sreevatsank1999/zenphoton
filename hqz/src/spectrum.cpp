@@ -28,7 +28,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <algorithm>
-#include "spectrum.h"
+#include "hqz/spectrum.h"
 
 
 /*

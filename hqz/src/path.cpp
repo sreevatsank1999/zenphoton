@@ -1,5 +1,5 @@
 
-#include "path.h"
+#include "hqz/path.h"
 
 Path::Path(Vec2 o, double lambda)
     : origin(o),
