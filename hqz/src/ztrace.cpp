@@ -8,12 +8,18 @@ ZTrace::ZTrace(const Value &scene)
     : mLights(scene["lights"]),
     mObjects(scene["objects"]),
     mMaterials(scene["materials"]),
-    mLightPower(0.0)
+    mLightPower(0.0),
+    mSeed(time(0) % (static_cast<time_t>(1)<<8*sizeof(mSeed))), maxReflection(1000),batchsize(1000)
 {
-    // Optional iteger values
-    mSeed = ZCheck::checkInteger(scene["seed"], "seed");
-    maxReflection = 1000;
-    batchsize = 1000;
+    // Optional integer values
+    if(scene.HasMember("seed"))
+        mSeed = ZCheck::checkInteger(scene["seed"], "seed");
+
+    if(scene.HasMember("maxReflection"))
+        maxReflection = ZCheck::checkInteger(scene["maxReflection"], "maxReflection");
+
+    if(scene.HasMember("ZTbatch"))
+        batchsize = ZCheck::checkInteger(scene["ZTbatch"], "ZTbatch");        
 
     // Add up the total light power in the scene, and check all lights.
     if (ZCheck::checkTuple(mLights, "viewport", 1)) {

@@ -34,11 +34,13 @@
 ZRender::ZRender(const Value &scene)
     : mScene(scene),
     mViewport(scene["viewport"]),
-    ptrTracer(new ZTrace(scene))
+    ptrTracer(new ZTrace(scene)),
+    batchsize(10000)
 {
     // Optional integer values
     mDebug = ZCheck::checkInteger(mScene["debug"], "debug");
-    batchsize = 100000;
+    if(scene.HasMember("ZRbatch"))
+        batchsize = ZCheck::checkInteger(scene["ZRbatch"], "ZRbatch");
 
     // Check stopping conditions
     mRayLimit = ZCheck::ZCheck::checkNumber(scene["rays"], "rays");
