@@ -52,6 +52,10 @@ struct Vec2
         return Vec2(a*x,a*y);
     }
 
+    bool operator==(Vec2 &rhs){
+        return (x == rhs.x) && (y == rhs.y);
+    }
+
 };
 
 struct AABB
