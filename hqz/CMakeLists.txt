@@ -45,7 +45,9 @@ if(BUILD_DEBUG)
     add_compile_definitions(DEBUG=1)
 endif()
 
-target_compile_options(libHQZ PRIVATE -Isrc -Wall -g -g3 -march=native -ffast-math -fno-exceptions -fomit-frame-pointer -funroll-loops)
+set(custom_compiler_flags "-Isrc -Wall -Wno-unused-value -g -O3 -march=native -ffast-math -fno-exceptions -fomit-frame-pointer -funroll-loops")
+
+target_compile_options(libHQZ PRIVATE "${custom_compiler_flags}")
 
 ##############################
 ## Building HQZ app binary  ##
@@ -60,3 +62,5 @@ set(binHQZ_SRC_FILES
 add_executable(hqz "${HQZ_INCLUDE_FILES}" "${binHQZ_SRC_FILES}")
 target_include_directories(hqz PUBLIC "${HQZ_INCLUDE_DIR}")
 target_link_libraries(hqz PUBLIC libHQZ PUBLIC libRapidJSON)
+
+target_compile_options(hqz PRIVATE "${custom_compiler_flags}")
