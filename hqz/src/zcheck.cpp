@@ -25,6 +25,23 @@ int ZCheck::checkInteger(const Value &v, const char *noun)
     return 0;
 }
 
+int ZCheck::checkBool(const Value &v, const char *noun)
+{
+    /*
+     * Convenience method to evaluate a boolean. If it's Null, returns false quietly.
+     * If it's a valid bool, returns it quietly. Otherwise returns zero and logs an error.
+     */
+
+    if (v.IsNull())
+        return 0;
+
+    if (v.IsBool())
+        return v.GetBool();
+
+    mError << "'" << noun << "' expected an boolean value\n";
+    return 0;
+}
+
 double ZCheck::checkNumber(const Value &v, const char *noun)
 {
     /*
