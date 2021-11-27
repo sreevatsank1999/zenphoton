@@ -19,6 +19,8 @@ public:
     Path& operator=(Path &&p);
     void append(Vec2 point);
 
+    bool erase_last(int n);
+
 private:
     Vec2 origin;
     std::vector<Vec2> v;    // Vertices in path traced

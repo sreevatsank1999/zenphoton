@@ -23,6 +23,14 @@ size_t Path::size() const{
     return v.size();
 }
 
+bool Path::erase_last(int n) {
+    if ((0 < n) && (n < v.size())){
+        v.erase(v.begin() + v.size()-n, v.end());
+        return true;
+    }
+    return false;
+}
+
 Vec2 Path::get_origin() const{
     return origin;
 }
