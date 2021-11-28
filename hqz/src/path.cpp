@@ -1,6 +1,11 @@
 
 #include "hqz/path.h"
 
+Path::Path()
+    : origin(0,0),
+    wavelength(0.0)
+{}
+
 Path::Path(Vec2 o, double lambda)
     : origin(o),
     wavelength(lambda)

@@ -6,6 +6,7 @@
 class Path
 {
 public:
+    Path();
     Path(Vec2 o, double lambda);
     Path(Vec2 o, double lambda, uint32_t path_length_expected);
     Path(Path &&p);
