@@ -38,7 +38,6 @@ private:
     uint32_t mSeed;
     double mLightPower;
 
-    uint32_t batchsize;
     uint32_t maxReflection;
 
 #if ENABLE_PARALLEL == 1
@@ -48,8 +47,7 @@ private:
 
     // Raytracer entry point
     void __traceRays(Paths &paths, uint32_t nbRays);
-    Path traceRay(Sampler &s);
-    Paths traceRayBatch(uint32_t seed, uint32_t count);
+    Path traceRay(Sampler&& s);
 
 #if ENABLE_PARALLEL == 1
     // Raytracer entry point (Parallel)
