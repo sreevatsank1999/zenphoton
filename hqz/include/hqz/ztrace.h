@@ -7,6 +7,9 @@
 #include "path.h"
 #include <stdint.h>
 #include <vector>
+#if ENABLE_PARALLEL == 1
+    #include <omp.h>
+#endif
 
 class ZTrace{
 public:
@@ -38,9 +41,20 @@ private:
     uint32_t batchsize;
     uint32_t maxReflection;
 
+#if ENABLE_PARALLEL == 1
+    // Use Parellel?
+    const bool useParallel;
+#endif
+
     // Raytracer entry point
+    void __traceRays(Paths &paths, uint32_t nbRays);
     Path traceRay(Sampler &s);
     Paths traceRayBatch(uint32_t seed, uint32_t count);
+
+#if ENABLE_PARALLEL == 1
+    // Raytracer entry point (Parallel)
+    void __traceRays_parallel(Paths &paths, uint32_t nbRays);
+#endif
 
     // Light sampling
     const Value &chooseLight(Sampler &s);

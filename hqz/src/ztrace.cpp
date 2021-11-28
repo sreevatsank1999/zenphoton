@@ -10,6 +10,9 @@ ZTrace::ZTrace(const Value &scene)
     mMaterials(scene["materials"]),
     mLightPower(0.0),
     mSeed(time(0) % (static_cast<time_t>(1)<<8*sizeof(mSeed))), maxReflection(1000),batchsize(1000)
+#if ENABLE_PARALLEL == 1
+    , useParallel(ZCheck::checkBool(scene["parallel"],"parallel"))
+#endif
 {
     // Optional integer values
     if(scene.HasMember("seed"))
@@ -60,7 +63,19 @@ double ZTrace::getLightPower() const {
     return mLightPower;
 }
 
-void ZTrace::traceRays(Paths &paths, uint32_t nbRays)
+void ZTrace::traceRays(Paths &paths, uint32_t nbRays){
+
+#if ENABLE_PARALLEL == 1
+    if(useParallel)
+        __traceRays_parallel(paths, nbRays);
+    else
+        __traceRays(paths, nbRays);
+#else
+    __traceRays(paths, nbRays);
+#endif
+}
+
+void ZTrace::__traceRays(Paths &paths, uint32_t nbRays)
 {
     paths.reserve(nbRays);
 
@@ -73,6 +88,26 @@ void ZTrace::traceRays(Paths &paths, uint32_t nbRays)
     }
     mSeed += nbRays;
 }
+
+#if ENABLE_PARALLEL == 1
+void ZTrace::__traceRays_parallel(Paths &paths, uint32_t nbRays)
+{
+    paths.reserve(nbRays);
+    
+    #pragma omp parallel for schedule(static)
+    for(uint64_t rayCount=0; rayCount<nbRays; rayCount += batchsize) {
+        // Minimum frequency for checking stopping conditions
+
+        Paths path_batch = traceRayBatch(mSeed + rayCount, batchsize);
+        #pragma omp critical
+        {
+            paths.insert(paths.end(), std::make_move_iterator(path_batch.begin()),
+                                    std::make_move_iterator(path_batch.end()));
+        }
+    }
+    mSeed += nbRays;
+}
+#endif
 
 Paths ZTrace::traceRayBatch(uint32_t seed, uint32_t count)
 {

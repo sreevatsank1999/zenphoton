@@ -39,7 +39,7 @@ set(libHQZ_SRC_FILES
 
 add_library(libHQZ SHARED "${HQZ_INCLUDE_FILES}" "${libHQZ_SRC_FILES}")
 target_include_directories(libHQZ PUBLIC "${HQZ_INCLUDE_DIR}")
-target_link_libraries(libHQZ libRapidJSON)
+target_link_libraries(libHQZ PRIVATE libRapidJSON)
 
 if(BUILD_DEBUG)
     add_compile_definitions(DEBUG=1)
@@ -48,6 +48,13 @@ endif()
 set(custom_compiler_flags -Isrc -Wall -Wno-unused-value -g -O3 -march=native -ffast-math -fno-exceptions -fomit-frame-pointer -funroll-loops)
 
 target_compile_options(libHQZ PRIVATE ${custom_compiler_flags})
+
+option(ENABLE_PARALLEL "Build with OpenMP support" TRUE)
+if(ENABLE_PARALLEL)
+    add_compile_definitions(ENABLE_PARALLEL=1)
+    find_package(OpenMP REQUIRED)
+    target_link_libraries(libHQZ PRIVATE OpenMP::OpenMP_CXX)
+endif()
 
 ##############################
 ## Building HQZ app binary  ##
