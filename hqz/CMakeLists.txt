@@ -45,7 +45,7 @@ if(BUILD_DEBUG)
     add_compile_definitions(DEBUG=1)
 endif()
 
-set(custom_compiler_flags -Isrc -Wall -Wno-unused-value -g -O0 -march=native -ffast-math -fno-exceptions -fomit-frame-pointer -funroll-loops)
+set(custom_compiler_flags -Isrc -Wall -Wno-unused-value -g -O3 -march=native -ffast-math -fno-exceptions -fomit-frame-pointer -funroll-loops)
 
 target_compile_options(libHQZ PRIVATE ${custom_compiler_flags})
 
