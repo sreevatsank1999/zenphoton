@@ -28,7 +28,9 @@
 #pragma once
 #include <stdint.h>
 #include <math.h>
-
+#if ENABLE_PARALLEL == 1
+    #include <omp.h>
+#endif
 
 struct Color
 {
@@ -40,10 +42,29 @@ struct Color
     static void testSpectrum(double temperature);
 
     void __attribute__((always_inline)) plot(int64_t *ptr, int intensity)
-    {
+    {   
+        
+    #if ENABLE_PARALLEL == 1
+        const int64_t r_intensity = r * intensity;
+        const int64_t g_intensity = g * intensity;
+        const int64_t b_intensity = b * intensity;
+        
+        int64_t * const r_ptr = ptr+0;
+        int64_t * const g_ptr = ptr+1;
+        int64_t * const b_ptr = ptr+2;
+        
+        #pragma omp atomic
+        *r_ptr += r_intensity;
+        #pragma omp atomic
+        *g_ptr += g_intensity;
+        #pragma omp atomic
+        *b_ptr += b_intensity;
+    #else
         ptr[0] += r * intensity;
         ptr[1] += g * intensity;
         ptr[2] += b * intensity;
+    #endif
+
     }
 
     bool isVisible()

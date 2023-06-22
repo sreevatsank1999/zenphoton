@@ -3,6 +3,8 @@
 #include "hqz/ztrace.h"
 #include "hqz/zcheck.h"
 #include "hqz/zmaterial.h"
+#include <iostream>
+#include <chrono>
 
 ZTrace::ZTrace(const Value &scene)
     : mLights(scene["lights"]),
@@ -63,10 +65,22 @@ double ZTrace::getLightPower() const {
 void ZTrace::traceRays(Paths &paths, uint32_t nbRays){
 
 #if ENABLE_PARALLEL == 1
-    if(useParallel)
+    if(useParallel){
+
+        const auto start = std::chrono::steady_clock::now();
         __traceRays_parallel(paths, nbRays);
-    else
+        const auto end = std::chrono::steady_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        std::cout << "Parallel Trace Time taken: " << elapsed.count() << "(nbRays:" << nbRays << ")\n";
+    }
+    else{
+
+        const auto start = std::chrono::steady_clock::now();
         __traceRays(paths, nbRays);
+        const auto end = std::chrono::steady_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        std::cout << "Serial Trace Time taken: " << elapsed.count() << "(nbRays:" << nbRays << ")\n";
+    }
 #else
     __traceRays(paths, nbRays);
 #endif

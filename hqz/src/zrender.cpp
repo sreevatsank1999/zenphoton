@@ -30,12 +30,17 @@
 #include "hqz/zrender.h"
 #include "hqz/zmaterial.h"
 #include "hqz/zcheck.h"
+#include <iostream>
+#include <chrono>
 
 ZRender::ZRender(const Value &scene)
     : mScene(scene),
     mViewport(scene["viewport"]),
     ptrTracer(new ZTrace(scene)),
     batchsize(10000)
+#if ENABLE_PARALLEL == 1
+    , useParallel(ZCheck::checkBool(scene["parallel"],"parallel"))
+#endif
 {
     // Optional integer values
     mDebug = ZCheck::checkInteger(mScene["debug"], "debug");
@@ -130,12 +135,36 @@ void ZRender::render(std::vector<unsigned char> &pixels)
 }
 
 void ZRender::draw(Paths &Ps, ViewportSample &v){
+#if ENABLE_PARALLEL == 1
+    if(useParallel){
+
+        const auto start = std::chrono::steady_clock::now();
+        __draw_parallel(Ps, v);
+        const auto end = std::chrono::steady_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        std::cout << "Parallel Draw Time taken: " << elapsed.count() << "(nbRays:" << batchsize << ")\n";
+    }
+    else{
+
+        const auto start = std::chrono::steady_clock::now();
+        __draw(Ps, v);
+        const auto end = std::chrono::steady_clock::now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        std::cout << "Serial Draw Time taken: " << elapsed.count() << "(nbRays:" << batchsize << ")\n";
+    }
+#else
+    __draw(Ps, v);
+#endif
+}
+
+void ZRender::__draw(Paths &Ps, ViewportSample &v){
 
     double w = width();
     double h = height();
 
 
-    for(auto& trace : Ps){
+    for(int i=0; i<Ps.size(); i++){
+        auto& trace = Ps[i];
         Vec2 p_1 = trace.get_origin();
         Color path_color; path_color.setWavelength(trace.get_wavelength());
         if(!path_color.isVisible())  continue;
@@ -172,6 +201,53 @@ void ZRender::draw(Paths &Ps, ViewportSample &v){
     
 
 }
+
+#if ENABLE_PARALLEL == 1
+void ZRender::__draw_parallel(Paths &Ps, ViewportSample &v){
+
+    double w = width();
+    double h = height();
+
+    #pragma omp parallel for schedule(static)
+    for(int i=0; i<Ps.size(); i++){
+        auto& trace = Ps[i];
+        Vec2 p_1 = trace.get_origin();
+        Color path_color; path_color.setWavelength(trace.get_wavelength());
+        if(!path_color.isVisible())  continue;
+
+        const int n = trace.size();
+        for(int i=0; i<n-1; i++){
+            // Draw a line from d.ray.origin to d.point
+            mImage.line( path_color,
+                v.xScale(p_1.x, w),
+                v.yScale(p_1.y, h),
+                v.xScale(trace[i].x, w),
+                v.yScale(trace[i].y, h));
+
+            p_1 = trace[i];
+        }
+        
+        Vec2 last_point = trace[n-1];
+        if(!is_insideViewport(trace[n-1],v)){
+            // Setting up final ray to clip it to within the viewport
+            Ray r;  r.origin = p_1;   
+            r.direction = trace[n-1] - p_1;
+            r.slope = r.direction.y/r.direction.x;
+
+            last_point = rayIntersectViewport(r,v);
+        }
+        
+        // Draw last line 
+            mImage.line( path_color,
+                v.xScale(p_1.x, w),
+                v.yScale(p_1.y, h),
+                v.xScale(last_point.x, w),
+                v.yScale(last_point.y, h));
+    }
+    
+
+}
+#endif
 
 void ZRender::interrupt()
 {

@@ -35,7 +35,9 @@
 #include "ztrace.h"
 #include <sstream>
 #include <vector>
-
+#if ENABLE_PARALLEL == 1
+    #include <omp.h>
+#endif
 
 class ZRender {
 public:
@@ -68,6 +70,11 @@ private:
     uint32_t mDebug;
     uint32_t batchsize;
 
+#if ENABLE_PARALLEL == 1
+    // Use Parellel?
+    const bool useParallel;
+#endif
+
     std::ostringstream mError;
     
     ZTrace* ptrTracer;
@@ -86,6 +93,11 @@ private:
     };
 
     void draw(Paths &Ps, ViewportSample &v);
+    void __draw(Paths &Ps, ViewportSample &v);
+    
+#if ENABLE_PARALLEL == 1
+    void __draw_parallel(Paths &Ps, ViewportSample &v);
+#endif
 
     void initViewport(ViewportSample &v);
     Vec2 rayIntersectViewport(Ray &r, const ViewportSample &v);     
